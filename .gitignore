@@ -57,10 +57,19 @@
 *sopc_*
 *.sdc
 
+# ModelSim/QuestaSim generated files
+*.mti
+*.mpf
+*.wlf
+*/transcript
+*/work/
+
 # ignore Quartus II generated folders
 */db/
 */incremental_db/
-*/simulation/
+*/simulation/**
+!*/simulation/*/
+!*/simulation/**/*.vhd
 */timing/
 */testbench/
 */*_sim/
