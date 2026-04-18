@@ -3,25 +3,34 @@ USE ieee.std_logic_1164.ALL;
 USE work.recop_types.ALL;
 
 -- ============================================================
--- ReCOP Processor Core
+-- ReCOP Processor Core (GP1 with MMIO)
 --
--- Structural entity wiring the Control Unit and Datapath.
--- This is the reusable processor IP — no board I/O here.
--- Board peripherals are connected in recop_top.vhd.
--- In GP2 this entity becomes a node in the HMPSoC.
+-- Control Unit and Datapath are wired together as before; this
+-- wrapper additionally exposes the board-facing MMIO signals
+-- (SW/KEY as inputs, HEX/LEDR as outputs).
 -- ============================================================
 
 ENTITY recop IS
     PORT (
         clk    : IN  bit_1;
         reset  : IN  bit_1;
-        z_flag : OUT bit_1   -- exposed for board debug; SOP/SIP added in GP2
+        z_flag : OUT bit_1;
+
+        sw_in  : IN  STD_LOGIC_VECTOR(9 DOWNTO 0);
+        key_in : IN  STD_LOGIC_VECTOR(3 DOWNTO 0);
+
+        hex0_o : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+        hex1_o : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+        hex2_o : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+        hex3_o : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+        hex4_o : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+        hex5_o : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+        ledr_o : OUT STD_LOGIC_VECTOR(9 DOWNTO 0)
     );
 END ENTITY recop;
 
 ARCHITECTURE structural OF recop IS
 
-    -- ===== Control signals: CU → Datapath =====
     SIGNAL pc_load       : bit_1;
     SIGNAL ir_load       : bit_1;
     SIGNAL op_load       : bit_1;
@@ -33,12 +42,9 @@ ARCHITECTURE structural OF recop IS
     SIGNAL ld_r          : bit_1;
     SIGNAL dm_wren       : bit_1;
 
-    -- ===== Status signals: Datapath → CU =====
     SIGNAL opcode        : bit_6;
     SIGNAL am            : bit_2;
-    SIGNAL z_flag_i      : bit_1;   -- internal; drives port z_flag
-
-    -- ===== Component declarations =====
+    SIGNAL z_flag_i      : bit_1;
 
     COMPONENT control_unit IS
         PORT (
@@ -76,7 +82,16 @@ ARCHITECTURE structural OF recop IS
             clr_z_flag    : IN  bit_1;
             opcode        : OUT bit_6;
             am            : OUT bit_2;
-            z_flag        : OUT bit_1
+            z_flag        : OUT bit_1;
+            sw_in         : IN  STD_LOGIC_VECTOR(9 DOWNTO 0);
+            key_in        : IN  STD_LOGIC_VECTOR(3 DOWNTO 0);
+            hex0_o        : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+            hex1_o        : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+            hex2_o        : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+            hex3_o        : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+            hex4_o        : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+            hex5_o        : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
+            ledr_o        : OUT STD_LOGIC_VECTOR(9 DOWNTO 0)
         );
     END COMPONENT;
 
@@ -117,7 +132,16 @@ BEGIN
         clr_z_flag    => clr_z_flag,
         opcode        => opcode,
         am            => am,
-        z_flag        => z_flag_i
+        z_flag        => z_flag_i,
+        sw_in         => sw_in,
+        key_in        => key_in,
+        hex0_o        => hex0_o,
+        hex1_o        => hex1_o,
+        hex2_o        => hex2_o,
+        hex3_o        => hex3_o,
+        hex4_o        => hex4_o,
+        hex5_o        => hex5_o,
+        ledr_o        => ledr_o
     );
 
 END ARCHITECTURE structural;

@@ -1,10 +1,16 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 
+-- ============================================================
+-- 4-bit value -> DE1-SoC 7-segment pattern (active low).
+-- 0x0..0x9 : digits 0..9
+-- 0xA      : '-' (sign for negative result)
+-- 0xB..0xF : blank
+-- ============================================================
 ENTITY hex_to_7seg IS
     PORT (
         hex_in  : IN  STD_LOGIC_VECTOR(3 DOWNTO 0);
-        seg_out : OUT STD_LOGIC_VECTOR(6 DOWNTO 0)  -- active low (0 = segment ON)
+        seg_out : OUT STD_LOGIC_VECTOR(6 DOWNTO 0)
     );
 END ENTITY hex_to_7seg;
 
@@ -23,12 +29,7 @@ BEGIN
             WHEN "0111" => seg_out <= "1111000"; -- 7
             WHEN "1000" => seg_out <= "0000000"; -- 8
             WHEN "1001" => seg_out <= "0010000"; -- 9
-            WHEN "1010" => seg_out <= "0001000"; -- A
-            WHEN "1011" => seg_out <= "0000011"; -- B
-            WHEN "1100" => seg_out <= "1000110"; -- C
-            WHEN "1101" => seg_out <= "0100001"; -- D
-            WHEN "1110" => seg_out <= "0000110"; -- E
-            WHEN "1111" => seg_out <= "0001110"; -- F
+            WHEN "1010" => seg_out <= "0111111"; -- '-'
             WHEN OTHERS => seg_out <= "1111111"; -- blank
         END CASE;
     END PROCESS;
