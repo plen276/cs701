@@ -20,6 +20,8 @@ ENTITY control_unit IS
     PORT (
         clk           : IN  bit_1;
         reset         : IN  bit_1;
+		  debug_assert   : IN  bit_1;
+		  debug_step    : IN  bit_1;
 
         -- From datapath
         opcode        : IN  bit_6;
@@ -50,42 +52,51 @@ ARCHITECTURE fsm OF control_unit IS
 
     TYPE state_type IS (ST_IDLE, ST_FETCH_1, ST_FETCH_2, ST_EXECUTE, ST_FETCH_JUMP);
     SIGNAL state : state_type;
+	 SIGNAL debug_step_i : bit_1;
 
 BEGIN
-
+	
+	 PROCESS(debug_step)
+	 BEGIN
+		  IF rising_edge(debug_step) THEN
+				debug_step_i <= '1';
+		  END IF;
+	 END PROCESS;
+	
     -- ===== Process 1: State Register =====
     state_reg : PROCESS(clk)
     BEGIN
         IF rising_edge(clk) THEN
             IF reset = '1' THEN
                 state <= ST_IDLE;
-            ELSE
-                CASE state IS
-                    WHEN ST_IDLE =>
-                        state <= ST_FETCH_1;
+            ELSIF debug_assert = '0' OR (debug_assert = '1' AND debug_step_i = '1') THEN
+					 debug_step_i <= '0';
+					 CASE state IS
+						  WHEN ST_IDLE =>
+								state <= ST_FETCH_1;
 
-                    WHEN ST_FETCH_1 =>
-                        state <= ST_FETCH_2;
+						  WHEN ST_FETCH_1 =>
+								state <= ST_FETCH_2;
 
-                    WHEN ST_FETCH_2 =>
-                        state <= ST_EXECUTE;
+						  WHEN ST_FETCH_2 =>
+								state <= ST_EXECUTE;
 
-                    WHEN ST_EXECUTE =>
-                        -- Jump instructions redirect to FETCH_JUMP to overwrite PC
-                        IF opcode = jmp THEN
-                            state <= ST_FETCH_JUMP;
-                        ELSIF opcode = sz AND z_flag = '1' THEN
-                            state <= ST_FETCH_JUMP;
-                        -- TODO: PRESENT (jump if Rz=0) needs rz_zero signal from datapath
-                        ELSE
-                            state <= ST_FETCH_1;
-                        END IF;
+						  WHEN ST_EXECUTE =>
+								-- Jump instructions redirect to FETCH_JUMP to overwrite PC
+								IF opcode = jmp THEN
+									 state <= ST_FETCH_JUMP;
+								ELSIF opcode = sz AND z_flag = '1' THEN
+									 state <= ST_FETCH_JUMP;
+								-- TODO: PRESENT (jump if Rz=0) needs rz_zero signal from datapath
+								ELSE
+									 state <= ST_FETCH_1;
+								END IF;
 
-                    WHEN ST_FETCH_JUMP =>
-                        state <= ST_FETCH_1;
+						  WHEN ST_FETCH_JUMP =>
+								state <= ST_FETCH_1;
 
-                END CASE;
-            END IF;
+					 END CASE;
+				END IF;
         END IF;
     END PROCESS state_reg;
 

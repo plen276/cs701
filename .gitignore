@@ -138,3 +138,8 @@ local.properties
 # Uncomment this line if you wish to ignore the project description file.
 # Typically, this file would be tracked if it contains build/dependency configurations:
 #.project
+gp-1/recop.bsf
+gp-1/recop_top.bsf
+gp-1/control_unit.bsf
+gp-1/datapath.bsf
+gp-1/debugger.bsf

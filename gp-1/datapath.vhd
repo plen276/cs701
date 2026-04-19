@@ -33,7 +33,11 @@ ENTITY datapath IS
         -- To Control Unit: status and decode
         opcode        : OUT bit_6;   -- IR[29:24]
         am            : OUT bit_2;   -- IR[31:30]
-        z_flag        : OUT bit_1
+        z_flag        : OUT bit_1;
+		  
+		  -- To Debugger
+		  debug_pc      : OUT bit_16;
+		  debug_ir      : OUT bit_16
     );
 END ENTITY datapath;
 
@@ -151,6 +155,8 @@ BEGIN
                 opr              <= pm_q;
                 pc <= STD_LOGIC_VECTOR(unsigned(pc) + 1);
             END IF;
+				debug_pc <= pc;
+				debug_ir <= ir(31 DOWNTO 0);
         END IF;
     END PROCESS;
 
