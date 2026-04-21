@@ -1,163 +1,164 @@
 -- Zoran Salcic
 
-library ieee;
-use ieee.std_logic_1164.all;
-use ieee.std_logic_unsigned.all;
-use ieee.std_logic_arith.all;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.std_logic_unsigned.ALL;
+USE ieee.std_logic_arith.ALL;
 
-use work.recop_types.all;
-use work.opcodes.all;
+USE work.recop_types.ALL;
+USE work.opcodes.ALL;
 
 -- various registers of recop
-entity registers is
-    port (
-		clk : in bit_1;
-		reset : in bit_1;
-		dpcr: out bit_32;
-		r7 : in bit_16;
-		rx : in bit_16;
-		ir_operand : in bit_16;
-		dpcr_lsb_sel : in bit_1;
-		dpcr_wr : in bit_1;
+ENTITY registers IS
+	PORT
+	(
+		clk          : IN bit_1;
+		reset        : IN bit_1;
+		dpcr         : OUT bit_32;
+		r7           : IN bit_16;
+		rx           : IN bit_16;
+		ir_operand   : IN bit_16;
+		dpcr_lsb_sel : IN bit_1;
+		dpcr_wr      : IN bit_1;
 		-- environment ready and set and clear signals
-		er: out bit_1;
-		er_wr : in bit_1;
-		er_clr : in bit_1;
+		er           : OUT bit_1;
+		er_wr        : IN bit_1;
+		er_clr       : IN bit_1;
 		-- end of thread and set and clear signals
-		eot: out bit_1;
-		eot_wr : in bit_1;
-		eot_clr : in bit_1;
+		eot          : OUT bit_1;
+		eot_wr       : IN bit_1;
+		eot_clr      : IN bit_1;
 		-- svop and write enable signal
-		svop : out bit_16;
-		svop_wr : in bit_1;
+		svop         : OUT bit_16;
+		svop_wr      : IN bit_1;
 		-- sip souce and registered outputs
-		sip_r : out bit_16;
-		sip : in bit_16;
+		sip_r        : OUT bit_16;
+		sip          : IN bit_16;
 		-- sop and write enable signal
-		sop : out bit_16;
-		sop_wr : in bit_1;
+		sop          : OUT bit_16;
+		sop_wr       : IN bit_1;
 		-- dprr, irq (dprr(1)) set and clear signals and result source and write enable signal
-		dprr :out bit_2;
-		irq_wr:in bit_1;
-		irq_clr:in bit_1;
-		result_wen: in bit_1;
-		result :in bit_1
-		);
-end registers;
+		dprr         : OUT bit_2;
+		irq_wr       : IN bit_1;
+		irq_clr      : IN bit_1;
+		result_wen   : IN bit_1;
+		result       : IN bit_1
+	);
+END registers;
 
-architecture beh of registers is
-
-  begin
+ARCHITECTURE beh OF registers IS
+BEGIN
 	-- dpcr
-	process (clk, reset)
-	begin
-		if reset = '1' then
+	PROCESS (clk, reset)
+	BEGIN
+		IF reset = '1' THEN
 			dpcr <= X"00000000";
-		elsif rising_edge(clk) then 
-			if dpcr_wr = '1' then
+		ELSIF rising_edge(clk) THEN
+			IF dpcr_wr = '1' THEN
 				-- write to dpcr. lower byte depends on select signal
-				case dpcr_lsb_sel is
-				when '0' =>
-					dpcr <= rx&r7;
-				when '1' =>
-					dpcr <= rx&ir_operand;
-				when others =>
-				end case;
-			end if;
-		end if;
-	end process;
-	
+				CASE dpcr_lsb_sel IS
+					WHEN '0' =>
+						dpcr <= rx & r7;
+					WHEN '1' =>
+						dpcr <= rx & ir_operand;
+					WHEN OTHERS =>
+				END CASE;
+			END IF;
+		END IF;
+	END PROCESS;
+
 	-- er
-	process (clk, reset)
-	begin
-		if reset = '1' then
+	PROCESS (clk, reset)
+	BEGIN
+		IF reset = '1' THEN
 			er <= '0';
-		elsif rising_edge(clk) then 
+		ELSIF rising_edge(clk) THEN
 			-- set or clear er
-			if er_wr = '1' then
+			IF er_wr = '1' THEN
 				er <= '1';
-			elsif er_clr = '1' then
+			ELSIF er_clr = '1' THEN
 				er <= '0';
-			end if;
-		end if;
-	end process;
-	
+			END IF;
+		END IF;
+	END PROCESS;
+
 	-- eot
-	process (clk, reset)
-	begin
-		if reset = '1' then
+	PROCESS (clk, reset)
+	BEGIN
+		IF reset = '1' THEN
 			eot <= '0';
-		elsif rising_edge(clk) then 
+		ELSIF rising_edge(clk) THEN
 			-- set or clear eot
-			if eot_wr = '1' then
+			IF eot_wr = '1' THEN
 				eot <= '1';
-			elsif eot_clr = '1' then
+			ELSIF eot_clr = '1' THEN
 				eot <= '0';
-			end if;
-		end if;
-	end process;
-	
+			END IF;
+		END IF;
+	END PROCESS;
+
 	-- svop
-	process (clk, reset)
-	begin
-		if reset = '1' then
+	PROCESS (clk, reset)
+	BEGIN
+		IF reset = '1' THEN
 			svop <= X"0000";
-		elsif rising_edge(clk) then 
-			if svop_wr = '1' then
+		ELSIF rising_edge(clk) THEN
+			IF svop_wr = '1' THEN
 				-- write Rx into SVOP upon write signal 
 				svop <= rx;
-			end if;
-		end if;
-	end process;
-	
+			END IF;
+		END IF;
+	END PROCESS;
+
 	-- sip
-	process (clk, reset)
-	begin
-		if reset = '1' then
+	PROCESS (clk, reset)
+	BEGIN
+		IF reset = '1' THEN
 			sip_r <= X"0000";
-		elsif rising_edge(clk) then 
-		-- register the sip signal with the system's clock
+		ELSIF rising_edge(clk) THEN
+			-- register the sip signal with the system's clock
 			sip_r <= sip;
-		end if;
-	end process;
-	
+		END IF;
+	END PROCESS;
+
 	-- sop
-	process (clk, reset)
-	begin
-		if reset = '1' then
+	PROCESS (clk, reset)
+	BEGIN
+		IF reset = '1' THEN
 			sop <= X"0000";
-		elsif rising_edge(clk) then 
-			if sop_wr = '1' then
+		ELSIF rising_edge(clk) THEN
+			IF sop_wr = '1' THEN
 				-- write Rx into SOP upon write signal 
 				sop <= rx;
-			end if;
-		end if;
-	end process;
-	
+			END IF;
+		END IF;
+	END PROCESS;
+
 	-- dprr: result
-	process (clk, reset)
-	begin
-		if reset = '1' then
+	PROCESS (clk, reset)
+	BEGIN
+		IF reset = '1' THEN
 			dprr(0) <= '0';
-		elsif rising_edge(clk) then 
-			if result_wen = '1' then
+		ELSIF rising_edge(clk) THEN
+			IF result_wen = '1' THEN
 				-- write result upon write signal 
 				dprr(0) <= result;
-			end if;
-		end if;
-	end process;
+			END IF;
+		END IF;
+	END PROCESS;
+
 	-- dprr: irq
-	process (clk, reset)
-	begin
-		if reset = '1' then
+	PROCESS (clk, reset)
+	BEGIN
+		IF reset = '1' THEN
 			dprr(1) <= '1';
-		elsif rising_edge(clk) then 
+		ELSIF rising_edge(clk) THEN
 			-- set or clear irq according to control signal
-			if irq_wr = '1' then
+			IF irq_wr = '1' THEN
 				dprr(1) <= '1';
-			elsif irq_clr ='1' then
+			ELSIF irq_clr = '1' THEN
 				dprr(1) <= '0';
-			end if;
-		end if;
-	end process;	
-end beh;
+			END IF;
+		END IF;
+	END PROCESS;
+END beh;

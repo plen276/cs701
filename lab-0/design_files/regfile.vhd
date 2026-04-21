@@ -1,91 +1,87 @@
 -- Zoran Salcic
 
-library ieee;
-use ieee.std_logic_1164.all;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
 
-use IEEE.numeric_std.all;
+USE IEEE.numeric_std.ALL;
 
-use work.recop_types.all;
-use work.various_constants.all;
+USE work.recop_types.ALL;
+USE work.various_constants.ALL;
 
-entity regfile is
-	port (
-		clk: in bit_1;
-		init: in bit_1;
+ENTITY regfile IS
+	PORT
+	(
+		clk          : IN bit_1;
+		init         : IN bit_1;
 		-- control signal to allow data to write into Rz
-		ld_r: in bit_1;
+		ld_r         : IN bit_1;
 		-- Rz and Rx select signals
-		sel_z: in integer range 0 to 15;
-		sel_x: in integer range 0 to 15;
+		sel_z        : IN INTEGER RANGE 0 TO 15;
+		sel_x        : IN INTEGER RANGE 0 TO 15;
 		-- register data outputs
-		rx : out bit_16;
-		rz: out bit_16;
+		rx           : OUT bit_16;
+		rz           : OUT bit_16;
 		-- select signal for input data to be written into Rz
-		rf_input_sel: in bit_3;
+		rf_input_sel : IN bit_3;
 		-- input data
-		ir_operand: in bit_16;
-		dm_out: in bit_16;
-		aluout: in bit_16;
-		rz_max: in bit_16;
-		sip_hold: in bit_16;
-		er_temp: in bit_1;
+		ir_operand   : IN bit_16;
+		dm_out       : IN bit_16;
+		aluout       : IN bit_16;
+		rz_max       : IN bit_16;
+		sip_hold     : IN bit_16;
+		er_temp      : IN bit_1;
 		-- R7 for writing to lower byte of dpcr
-		r7 : out bit_16;
-		dprr_res : in bit_1;
-		dprr_res_reg : in bit_1;
-		dprr_wren : in bit_1
-				
-		);
-end regfile;
+		r7           : OUT bit_16;
+		dprr_res     : IN bit_1;
+		dprr_res_reg : IN bit_1;
+		dprr_wren    : IN bit_1
 
-architecture beh of regfile is
-	type reg_array is array (15 downto 0) of bit_16;
-	signal regs: reg_array;
-	signal data_input_z: bit_16;
-begin
-	r7 <=regs(7);
+	);
+END regfile;
+
+ARCHITECTURE beh OF regfile IS
+	TYPE reg_array IS ARRAY (15 DOWNTO 0) OF bit_16;
+	SIGNAL regs         : reg_array;
+	SIGNAL data_input_z : bit_16;
+BEGIN
+	r7 <= regs(7);
 
 	-- mux selecting input data to be written to Rz
-	input_select: process (rf_input_sel, ir_operand, dm_out, aluout, rz_max, sip_hold, er_temp, dprr_res_reg)
-    begin
-        case rf_input_sel is
-            when "000" =>
-                data_input_z <= ir_operand;
-				when "001" =>
-					 data_input_z <= X"000"&"000"&dprr_res_reg;
-            when "011" =>
-                data_input_z <= aluout;
-            when "100" =>
-                data_input_z <= rz_max;
-            when "101" =>
-                data_input_z <= sip_hold;
-            when "110" =>
-                data_input_z <= X"000"&"000"&er_temp;
-            when "111" =>
-                data_input_z <= dm_out;
-            when others =>
-                data_input_z <= X"0000";
-        end case;
-    end process input_select;
-	
-	process (clk, init)
-	begin
-		if init = '1' then
-			regs<=((others => '0'),(others => '0'),(others => '0'),(others => '0'),(others => '0'),(others => '0'),(others => '0'),(others => '0'),(others => '0'),(others => '0'),(others => '0'),(others => '0'),(others => '0'),(others => '0'),(others => '0'),(others => '0'));
-		elsif rising_edge(clk) then
-			-- write data into Rz if ld signal is asserted
-			if ld_r = '1' then
-				regs(sel_z) <= data_input_z;
-			elsif dprr_wren = '1' then
-				regs(0) <= X"000"&"000"&dprr_res;
-			end if;
-		end if;
-	end process;
-	
+	input_select : PROCESS (rf_input_sel, ir_operand, dm_out, aluout, rz_max, sip_hold, er_temp, dprr_res_reg)
+	BEGIN
+		CASE rf_input_sel IS
+			WHEN "000" =>
+				data_input_z <= ir_operand;
+			WHEN "001" =>
+				data_input_z <= X"000" & "000" & dprr_res_reg;
+			WHEN "011" =>
+				data_input_z <= aluout;
+			WHEN "100" =>
+				data_input_z <= rz_max;
+			WHEN "101" =>
+				data_input_z <= sip_hold;
+			WHEN "110" =>
+				data_input_z <= X"000" & "000" & er_temp;
+			WHEN "111" =>
+				data_input_z <= dm_out;
+			WHEN OTHERS =>
+				data_input_z <= X"0000";
+		END CASE;
+	END PROCESS input_select;
 
+	PROCESS (clk, init)
+	BEGIN
+		IF init = '1' THEN
+			regs <= ((OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'), (OTHERS => '0'));
+		ELSIF rising_edge(clk) THEN
+			-- write data into Rz if ld signal is asserted
+			IF ld_r = '1' THEN
+				regs(sel_z) <= data_input_z;
+			ELSIF dprr_wren = '1' THEN
+				regs(0) <= X"000" & "000" & dprr_res;
+			END IF;
+		END IF;
+	END PROCESS;
 	rx <= regs(sel_x);
 	rz <= regs(sel_z);
-
-
-	
-end beh;
+END beh;

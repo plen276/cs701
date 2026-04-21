@@ -2,15 +2,16 @@ LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 
 ENTITY hex_to_7seg IS
-    PORT (
-        hex_in  : IN  STD_LOGIC_VECTOR(3 DOWNTO 0);
-        seg_out : OUT STD_LOGIC_VECTOR(6 DOWNTO 0)  -- active low (0 = segment ON)
+    PORT
+    (
+        hex_in  : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
+        seg_out : OUT STD_LOGIC_VECTOR(6 DOWNTO 0) -- active low (0 = segment ON)
     );
 END ENTITY hex_to_7seg;
 
 ARCHITECTURE behaviour OF hex_to_7seg IS
 BEGIN
-    PROCESS(hex_in)
+    PROCESS (hex_in)
     BEGIN
         CASE hex_in IS
             WHEN "0000" => seg_out <= "1000000"; -- 0
