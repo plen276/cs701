@@ -73,7 +73,7 @@ END ENTITY control_unit;
 
 ARCHITECTURE fsm OF control_unit IS
 
-    TYPE state_type IS (ST_IDLE, ST_FETCH_1, ST_FETCH_2, ST_WAIT_MEM, ST_EXECUTE, ST_FETCH_JUMP);
+    TYPE state_type IS (ST_IDLE, ST_FETCH_1, ST_FETCH_1B, ST_FETCH_2, ST_FETCH_2B, ST_WAIT_MEM, ST_EXECUTE, ST_FETCH_JUMP);
     SIGNAL state : state_type;
 
 BEGIN
@@ -81,7 +81,9 @@ BEGIN
     WITH state SELECT state_out <=
         "000" WHEN ST_IDLE,
         "001" WHEN ST_FETCH_1,
+        "001" WHEN ST_FETCH_1B,
         "010" WHEN ST_FETCH_2,
+        "010" WHEN ST_FETCH_2B,
         "011" WHEN ST_WAIT_MEM,
         "100" WHEN ST_EXECUTE,
         "101" WHEN ST_FETCH_JUMP,
@@ -101,9 +103,15 @@ BEGIN
                         state <= ST_FETCH_1;
 
                     WHEN ST_FETCH_1 =>
-                        state <= ST_FETCH_2;
+                        state <= ST_FETCH_1B; -- wait for ROM to output word@PC
+
+                    WHEN ST_FETCH_1B =>
+                        state <= ST_FETCH_2; -- now capture IR[31:16], advance PC
 
                     WHEN ST_FETCH_2 =>
+                        state <= ST_FETCH_2B; -- wait for ROM to output word@PC+1
+
+                    WHEN ST_FETCH_2B =>
                         IF (opcode = ldr AND am /= am_immediate) OR opcode = str OR opcode = strpc THEN
                             state <= ST_WAIT_MEM;
                         ELSE
@@ -132,7 +140,7 @@ BEGIN
     -- ==================================================
     -- Process 2: Output Logic
     -- ==================================================
-    output_logic : PROCESS (state, am, opcode, z_flag, rz_zero)
+    output_logic : PROCESS (state, am, opcode, z_flag, rz_zero, debug_mode, debug_step)
     BEGIN
         -- Safe defaults: no writes, no loads, ALU idle
         pc_load       <= '0';
@@ -158,10 +166,16 @@ BEGIN
                 NULL; -- hold reset, all defaults
 
             WHEN ST_FETCH_1 =>
-                ir_load <= '1'; -- latch PM output into IR[31:16], PC advances in datapath
+                NULL; -- present PC address to ROM, wait one cycle for output
+
+            WHEN ST_FETCH_1B =>
+                ir_load <= '1'; -- ROM has word@PC ready: latch into IR[31:16], PC advances
 
             WHEN ST_FETCH_2 =>
-                op_load <= '1'; -- latch PM output into IR[15:0] and operand, PC advances
+                NULL; -- present PC+1 address to ROM, wait one cycle for output
+
+            WHEN ST_FETCH_2B =>
+                op_load <= '1'; -- ROM has word@PC+1 ready: latch into IR[15:0] and operand, PC advances
 
             WHEN ST_WAIT_MEM =>
                 IF opcode = ldr AND am = am_register THEN
@@ -370,6 +384,22 @@ BEGIN
                 END IF;
 
         END CASE;
+
+        -- In debug mode, gate "action" signals so only fires on the cycle
+        -- the FSM actually advances (debug_step = '1'). Otherwise the combinational
+        -- outputs would keep pulsing every 50MHz cycle while state is held, and
+        -- the datapath would repeatedly increment PC / write memory / etc.
+        IF debug_mode = '1' AND debug_step = '0' THEN
+            pc_load    <= '0';
+            ir_load    <= '0';
+            op_load    <= '0';
+            ld_r       <= '0';
+            dm_wren    <= '0';
+            ssop_load  <= '0';
+            dpcr_load  <= '0';
+            clr_z_flag <= '0';
+        END IF;
+
     END PROCESS output_logic;
 
 END ARCHITECTURE fsm;
