@@ -62,7 +62,12 @@ ENTITY control_unit IS
         -- SOP / DPCR control
         ssop_load     : OUT STD_LOGIC;                    -- SSOP: latch Rx into SOP register
         dpcr_load     : OUT STD_LOGIC;                    -- DATACALL: latch into DPCR
-        dpcr_data_sel : OUT STD_LOGIC                     -- '0'=R7 lower, '1'=OPR lower
+        dpcr_data_sel : OUT STD_LOGIC;                    -- '0'=R7 lower, '1'=OPR lower
+
+        -- Debug/Board IO
+        debug_mode    : IN STD_LOGIC;
+        debug_step    : IN STD_LOGIC;
+        state_out     : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)
     );
 END ENTITY control_unit;
 
@@ -73,6 +78,15 @@ ARCHITECTURE fsm OF control_unit IS
 
 BEGIN
 
+    WITH state SELECT state_out <=
+        "000" WHEN ST_IDLE,
+        "001" WHEN ST_FETCH_1,
+        "010" WHEN ST_FETCH_2,
+        "011" WHEN ST_WAIT_MEM,
+        "100" WHEN ST_EXECUTE,
+        "101" WHEN ST_FETCH_JUMP,
+        "000" WHEN OTHERS;
+
     -- ==================================================
     -- Process 1: State Register
     -- ==================================================
@@ -81,7 +95,7 @@ BEGIN
         IF rising_edge(clk) THEN
             IF reset = '1' THEN
                 state <= ST_IDLE;
-            ELSE
+            ELSIF debug_mode = '0' OR debug_step = '1' THEN
                 CASE state IS
                     WHEN ST_IDLE =>
                         state <= ST_FETCH_1;

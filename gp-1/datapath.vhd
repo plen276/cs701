@@ -53,7 +53,6 @@ ENTITY datapath IS
 
         -- ==============================
         -- DEBUG PORTS
-        -- TODO: Delete
         -- ==============================
         rz_out        : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
         rx_out        : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
@@ -160,7 +159,6 @@ BEGIN
 
     -- ==============================
     -- DEBUG PORT ASSIGNMENTS
-    -- TODO: Delete
     -- ==============================
     rz_out <= rz_sig;
     rx_out <= rx_sig;
