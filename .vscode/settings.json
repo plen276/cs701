@@ -1,0 +1,43 @@
+{
+  "[vhdl]": {
+    "editor.defaultFormatter": "Vinrobot.vhdl-formatter",
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+  },
+  "vhdl.formatter.insertFinalNewline": true,
+  "vhdl.formatter.align.mode": "Global",
+  "vhdl.formatter.align.all": true,
+  "vhdl.formatter.align.port": true,
+  "vhdl.formatter.newline.port": "NewLine",
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "workbench.editorAssociations": {
+    "*.md": "vscode.markdown.preview.editor"
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/db/": true,
+    "**/incremental_db/": true,
+    "**/output_files/": true,
+    "**/rtl_work/": true,
+    "**/work/": true,
+    "**/*.mti": true,
+    "**/*.mpf": true,
+    "**/*.wlf": true,
+    "**/transcript": true,
+    "**/*.rpt": true,
+    "**/*.summary": true,
+    "**/*.pin": true,
+    "**/*.done": true,
+    "**/*.qws": true,
+    "**/*.bak": true,
+    "**/*.jdi": true,
+    "**/*.smsg": true,
+    "**/*.do*": true
+  }
+}

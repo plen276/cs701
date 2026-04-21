@@ -12,10 +12,10 @@ USE work.various_constants.ALL;
 -- from the datapath) and verifies state transitions and output signals.
 --
 -- Tests (T1-T26):
---   T1-T2   : Fetch cycle — ir_load, op_load
+--   T1-T2   : Fetch cycle: ir_load, op_load
 --   T3-T5   : LDR immediate/direct/register (WAIT_MEM for direct/reg)
 --   T6-T8   : STR direct/immediate/register (all via WAIT_MEM)
---   T9-T13  : ALU instructions — ADD, SUB, AND, OR
+--   T9-T13  : ALU instructions: ADD, SUB, AND, OR
 --   T14-T15 : MAX, CLFZ
 --   T16-T17 : JMP # and JMP Rx (pc_src_sel)
 --   T18-T19 : SZ not taken / taken
@@ -151,7 +151,7 @@ BEGIN
         ASSERT ir_load = '0' REPORT "FAIL T2: ir_load should be 0 in FETCH_2" SEVERITY ERROR;
 
         -- ================================================
-        -- T3: LDR Rz #Op (immediate) - FETCH_2 -> EXECUTE
+        -- T3: LDR Rz #value (immediate) - FETCH_2 -> EXECUTE
         -- No WAIT_MEM for immediate addressing.
         -- Expect: rf_input_sel="000", ld_r='1', dm_wren='0'
         -- ================================================
@@ -165,7 +165,7 @@ BEGIN
         tick; -- FETCH_1, FETCH_2
 
         -- ================================================
-        -- T4: LDR Rz $Op (direct) - FETCH_2 -> WAIT_MEM -> EXECUTE
+        -- T4: LDR Rz $address (direct) - FETCH_2 -> WAIT_MEM -> EXECUTE
         -- WAIT_MEM: address (OPR) registered by altsyncram.
         -- EXECUTE: rf_input_sel="111", ld_r='1'
         -- ================================================
@@ -198,7 +198,7 @@ BEGIN
         tick; -- FETCH_1, FETCH_2
 
         -- ================================================
-        -- T6: STR Rx $Op (direct) - FETCH_2 -> WAIT_MEM -> EXECUTE
+        -- T6: STR Rx $address (direct) - FETCH_2 -> WAIT_MEM -> EXECUTE
         -- EXECUTE: dm_wren='1', dm_addr_sel="00" (OPR, default)
         -- ================================================
         opcode <= str;
@@ -213,7 +213,7 @@ BEGIN
         tick; -- FETCH_1, FETCH_2
 
         -- ================================================
-        -- T7: STR Rz #Op (immediate) - FETCH_2 -> WAIT_MEM -> EXECUTE
+        -- T7: STR Rz #value (immediate) - FETCH_2 -> WAIT_MEM -> EXECUTE
         -- EXECUTE: dm_wren='1', dm_addr_sel="01" (Rz), dm_data_sel="01" (OPR)
         -- ================================================
         opcode <= str;
@@ -242,7 +242,7 @@ BEGIN
         tick; -- FETCH_1, FETCH_2
 
         -- ================================================
-        -- T9: ADD Rz Rx #Op (immediate)
+        -- T9: ADD Rz Rx #value (immediate)
         -- Expect: alu_add, op1=OPR, op2=Rx, ld_r='1'
         -- ================================================
         opcode <= addr;
@@ -271,7 +271,7 @@ BEGIN
         tick; -- FETCH_1, FETCH_2
 
         -- ================================================
-        -- T11: SUB Rz #Op - Z flag only, result discarded
+        -- T11: SUB Rz #value - Z flag only, result discarded
         -- Expect: alu_sub, alu_op2_sel='1' (Rz), ld_r='0'
         -- ================================================
         opcode <= subr;
@@ -285,7 +285,7 @@ BEGIN
         tick; -- FETCH_1, FETCH_2
 
         -- ================================================
-        -- T12: AND Rz Rx #Op (immediate)
+        -- T12: AND Rz Rx #value (immediate)
         -- ================================================
         opcode <= andr;
         am     <= am_immediate;
@@ -311,7 +311,7 @@ BEGIN
         tick; -- FETCH_1, FETCH_2
 
         -- ================================================
-        -- T14: MAX Rz #Op
+        -- T14: MAX Rz #value
         -- Expect: rf_input_sel="100" (rz_max), ld_r='1'
         -- ================================================
         opcode <= max;
@@ -336,7 +336,7 @@ BEGIN
         tick; -- FETCH_1, FETCH_2
 
         -- ================================================
-        -- T16: JMP #Op (immediate)
+        -- T16: JMP #value (immediate)
         -- EXECUTE: no pc_load (fires in FETCH_JUMP)
         -- FETCH_JUMP: pc_load='1', pc_src_sel='0' (OPR)
         -- ================================================
@@ -443,7 +443,7 @@ BEGIN
         tick; -- FETCH_1, FETCH_2
 
         -- ================================================
-        -- T24: STRPC $Op - FETCH_2 -> WAIT_MEM -> EXECUTE
+        -- T24: STRPC $address - FETCH_2 -> WAIT_MEM -> EXECUTE
         -- EXECUTE: dm_data_sel="10" (PC), dm_wren='1', dm_addr_sel="00" (OPR)
         -- ================================================
         opcode <= strpc;
@@ -470,7 +470,7 @@ BEGIN
         tick; -- FETCH_1, FETCH_2
 
         -- ================================================
-        -- T26: DATACALL Rx #Op (immediate) - DPCR <- Rx & Op
+        -- T26: DATACALL Rx #value (immediate) - DPCR <- Rx & Op
         -- Expect: dpcr_load='1', dpcr_data_sel='1'
         -- ================================================
         opcode <= datacall2;
