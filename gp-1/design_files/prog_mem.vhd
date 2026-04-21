@@ -16,8 +16,6 @@
 --
 -- 13.0.1 Build 232 06/12/2013 SP 1 SJ Web Edition
 -- ************************************************************
-
-
 --Copyright (C) 1991-2013 Altera Corporation
 --Your use of Altera Corporation's design tools, logic functions 
 --and other software and tools, and its AMPP partner logic 
@@ -35,57 +33,52 @@
 -- Zoran Salcic
 
 LIBRARY ieee;
-USE ieee.std_logic_1164.all;
+USE ieee.std_logic_1164.ALL;
 
 LIBRARY altera_mf;
-USE altera_mf.all;
+USE altera_mf.ALL;
 
 ENTITY prog_mem IS
-	PORT
-	(
-		address		: IN STD_LOGIC_VECTOR (14 DOWNTO 0);
-		clock		: IN STD_LOGIC  := '1';
-		q		: OUT STD_LOGIC_VECTOR (15 DOWNTO 0)
+	PORT (
+		address : IN STD_LOGIC_VECTOR (14 DOWNTO 0);
+		clock : IN STD_LOGIC := '1';
+		q : OUT STD_LOGIC_VECTOR (15 DOWNTO 0)
 	);
 END prog_mem;
-
-
 ARCHITECTURE SYN OF prog_mem IS
 
-	SIGNAL sub_wire0	: STD_LOGIC_VECTOR (15 DOWNTO 0);
-
-
+	SIGNAL sub_wire0 : STD_LOGIC_VECTOR (15 DOWNTO 0);
 
 	COMPONENT altsyncram
-	GENERIC (
-		clock_enable_input_a		: STRING;
-		clock_enable_output_a		: STRING;
-		init_file		: STRING;
-		intended_device_family		: STRING;
-		lpm_hint		: STRING;
-		lpm_type		: STRING;
-		maximum_depth		: NATURAL;
-		numwords_a		: NATURAL;
-		operation_mode		: STRING;
-		outdata_aclr_a		: STRING;
-		outdata_reg_a		: STRING;
-		ram_block_type		: STRING;
-		widthad_a		: NATURAL;
-		width_a		: NATURAL;
-		width_byteena_a		: NATURAL
-	);
-	PORT (
-			address_a	: IN STD_LOGIC_VECTOR (14 DOWNTO 0);
-			clock0	: IN STD_LOGIC ;
-			q_a	: OUT STD_LOGIC_VECTOR (15 DOWNTO 0)
-	);
+		GENERIC (
+			clock_enable_input_a : STRING;
+			clock_enable_output_a : STRING;
+			init_file : STRING;
+			intended_device_family : STRING;
+			lpm_hint : STRING;
+			lpm_type : STRING;
+			maximum_depth : NATURAL;
+			numwords_a : NATURAL;
+			operation_mode : STRING;
+			outdata_aclr_a : STRING;
+			outdata_reg_a : STRING;
+			ram_block_type : STRING;
+			widthad_a : NATURAL;
+			width_a : NATURAL;
+			width_byteena_a : NATURAL
+		);
+		PORT (
+			address_a : IN STD_LOGIC_VECTOR (14 DOWNTO 0);
+			clock0 : IN STD_LOGIC;
+			q_a : OUT STD_LOGIC_VECTOR (15 DOWNTO 0)
+		);
 	END COMPONENT;
 
 BEGIN
-	q    <= sub_wire0(15 DOWNTO 0);
+	q <= sub_wire0(15 DOWNTO 0);
 
 	altsyncram_component : altsyncram
-	GENERIC MAP (
+	GENERIC MAP(
 		clock_enable_input_a => "BYPASS",
 		clock_enable_output_a => "BYPASS",
 		init_file => "./recop-asm/rawOutput.mif",
@@ -102,13 +95,11 @@ BEGIN
 		width_a => 16,
 		width_byteena_a => 1
 	)
-	PORT MAP (
+	PORT MAP(
 		address_a => address,
 		clock0 => clock,
 		q_a => sub_wire0
 	);
-
-
 
 END SYN;
 
@@ -146,7 +137,7 @@ END SYN;
 -- Retrieval info: LIBRARY: altera_mf altera_mf.altera_mf_components.all
 -- Retrieval info: CONSTANT: CLOCK_ENABLE_INPUT_A STRING "BYPASS"
 -- Retrieval info: CONSTANT: CLOCK_ENABLE_OUTPUT_A STRING "BYPASS"
--- Retrieval info: CONSTANT: MIFfilename STRING "./recop-asm/rawOutput.mif"
+-- Retrieval info: CONSTANT: INIT_FILE STRING "./recop-asm/rawOutput.mif"
 -- Retrieval info: CONSTANT: INTENDED_DEVICE_FAMILY STRING "Cyclone II"
 -- Retrieval info: CONSTANT: LPM_HINT STRING "ENABLE_RUNTIME_MOD=NO"
 -- Retrieval info: CONSTANT: LPM_TYPE STRING "altsyncram"
