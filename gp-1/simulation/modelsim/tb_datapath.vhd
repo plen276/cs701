@@ -8,69 +8,70 @@ END ENTITY tb_datapath;
 
 ARCHITECTURE sim OF tb_datapath IS
 
-    CONSTANT CLK_PERIOD : TIME := 20 ns;
+    CONSTANT CLK_PERIOD  : TIME                          := 20 ns;
 
-    SIGNAL clk : STD_LOGIC := '0';
-    SIGNAL reset : STD_LOGIC := '1';
-    SIGNAL pm_data : STD_LOGIC_VECTOR(15 DOWNTO 0) := (OTHERS => '0');
-    SIGNAL pc_load : STD_LOGIC := '0';
-    SIGNAL ir_load : STD_LOGIC := '0';
-    SIGNAL op_load : STD_LOGIC := '0';
-    SIGNAL pc_src_sel : STD_LOGIC := '0';
-    SIGNAL alu_operation : STD_LOGIC_VECTOR(2 DOWNTO 0) := "100";
-    SIGNAL alu_op1_sel : STD_LOGIC_VECTOR(1 DOWNTO 0) := "00";
-    SIGNAL alu_op2_sel : STD_LOGIC := '0';
-    SIGNAL clr_z_flag : STD_LOGIC := '0';
-    SIGNAL rf_input_sel : STD_LOGIC_VECTOR(2 DOWNTO 0) := "000";
-    SIGNAL ld_r : STD_LOGIC := '0';
-    SIGNAL dm_wren : STD_LOGIC := '0';
-    SIGNAL dm_addr_sel : STD_LOGIC_VECTOR(1 DOWNTO 0) := "00";
-    SIGNAL dm_data_sel : STD_LOGIC_VECTOR(1 DOWNTO 0) := "00";
-    SIGNAL sip : STD_LOGIC_VECTOR(15 DOWNTO 0) := (OTHERS => '0');
-    SIGNAL ssop_load : STD_LOGIC := '0';
-    SIGNAL sop : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL dpcr_load : STD_LOGIC := '0';
+    SIGNAL clk           : STD_LOGIC                     := '0';
+    SIGNAL reset         : STD_LOGIC                     := '1';
+    SIGNAL pm_data       : STD_LOGIC_VECTOR(15 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL pc_load       : STD_LOGIC                     := '0';
+    SIGNAL ir_load       : STD_LOGIC                     := '0';
+    SIGNAL op_load       : STD_LOGIC                     := '0';
+    SIGNAL pc_src_sel    : STD_LOGIC                     := '0';
+    SIGNAL alu_operation : STD_LOGIC_VECTOR(2 DOWNTO 0)  := "100";
+    SIGNAL alu_op1_sel   : STD_LOGIC_VECTOR(1 DOWNTO 0)  := "00";
+    SIGNAL alu_op2_sel   : STD_LOGIC                     := '0';
+    SIGNAL clr_z_flag    : STD_LOGIC                     := '0';
+    SIGNAL rf_input_sel  : STD_LOGIC_VECTOR(2 DOWNTO 0)  := "000";
+    SIGNAL ld_r          : STD_LOGIC                     := '0';
+    SIGNAL dm_wren       : STD_LOGIC                     := '0';
+    SIGNAL dm_addr_sel   : STD_LOGIC_VECTOR(1 DOWNTO 0)  := "00";
+    SIGNAL dm_data_sel   : STD_LOGIC_VECTOR(1 DOWNTO 0)  := "00";
+    SIGNAL sip           : STD_LOGIC_VECTOR(15 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL ssop_load     : STD_LOGIC                     := '0';
+    SIGNAL sop           : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL dpcr_load     : STD_LOGIC := '0';
     SIGNAL dpcr_data_sel : STD_LOGIC := '0';
-    SIGNAL dpcr : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL opcode : STD_LOGIC_VECTOR(5 DOWNTO 0);
-    SIGNAL am : STD_LOGIC_VECTOR(1 DOWNTO 0);
-    SIGNAL z_flag : STD_LOGIC;
-    SIGNAL rz_zero : STD_LOGIC;
-    SIGNAL rz_out : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL rx_out : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL pc_out : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL dpcr          : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL opcode        : STD_LOGIC_VECTOR(5 DOWNTO 0);
+    SIGNAL am            : STD_LOGIC_VECTOR(1 DOWNTO 0);
+    SIGNAL z_flag        : STD_LOGIC;
+    SIGNAL rz_zero       : STD_LOGIC;
+    SIGNAL rz_out        : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL rx_out        : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL pc_out        : STD_LOGIC_VECTOR(15 DOWNTO 0);
 
     COMPONENT datapath IS
-        PORT (
-            clk : IN STD_LOGIC;
-            reset : IN STD_LOGIC;
-            pm_data : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
-            pc_load : IN STD_LOGIC;
-            ir_load : IN STD_LOGIC;
-            op_load : IN STD_LOGIC;
-            pc_src_sel : IN STD_LOGIC;
+        PORT
+        (
+            clk           : IN STD_LOGIC;
+            reset         : IN STD_LOGIC;
+            pm_data       : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+            pc_load       : IN STD_LOGIC;
+            ir_load       : IN STD_LOGIC;
+            op_load       : IN STD_LOGIC;
+            pc_src_sel    : IN STD_LOGIC;
             alu_operation : IN STD_LOGIC_VECTOR(2 DOWNTO 0);
-            alu_op1_sel : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-            alu_op2_sel : IN STD_LOGIC;
-            clr_z_flag : IN STD_LOGIC;
-            rf_input_sel : IN STD_LOGIC_VECTOR(2 DOWNTO 0);
-            ld_r : IN STD_LOGIC;
-            dm_wren : IN STD_LOGIC;
-            dm_addr_sel : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-            dm_data_sel : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-            sip : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
-            ssop_load : IN STD_LOGIC;
-            sop : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-            dpcr_load : IN STD_LOGIC;
+            alu_op1_sel   : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+            alu_op2_sel   : IN STD_LOGIC;
+            clr_z_flag    : IN STD_LOGIC;
+            rf_input_sel  : IN STD_LOGIC_VECTOR(2 DOWNTO 0);
+            ld_r          : IN STD_LOGIC;
+            dm_wren       : IN STD_LOGIC;
+            dm_addr_sel   : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+            dm_data_sel   : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+            sip           : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+            ssop_load     : IN STD_LOGIC;
+            sop           : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            dpcr_load     : IN STD_LOGIC;
             dpcr_data_sel : IN STD_LOGIC;
-            dpcr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-            opcode : OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
-            am : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
-            z_flag : OUT STD_LOGIC;
-            rz_zero : OUT STD_LOGIC;
-            rz_out : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-            rx_out : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-            pc_out : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
+            dpcr          : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            opcode        : OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
+            am            : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+            z_flag        : OUT STD_LOGIC;
+            rz_zero       : OUT STD_LOGIC;
+            rz_out        : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            rx_out        : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            pc_out        : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
         );
     END COMPONENT;
 
@@ -82,8 +83,8 @@ ARCHITECTURE sim OF tb_datapath IS
 
     -- Drives fetch cycle: ir_load with upper half, op_load with lower half
     PROCEDURE do_fetch (
-        upper : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
-        lower : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+        upper          : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+        lower          : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
         SIGNAL pm_data : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
         SIGNAL ir_load : OUT STD_LOGIC;
         SIGNAL op_load : OUT STD_LOGIC
@@ -103,36 +104,37 @@ BEGIN
 
     clk <= NOT clk AFTER CLK_PERIOD / 2;
 
-    DUT : datapath PORT MAP(
-        clk => clk,
-        reset => reset,
-        pm_data => pm_data,
-        pc_load => pc_load,
-        ir_load => ir_load,
-        op_load => op_load,
-        pc_src_sel => pc_src_sel,
+    DUT : datapath PORT MAP
+    (
+        clk           => clk,
+        reset         => reset,
+        pm_data       => pm_data,
+        pc_load       => pc_load,
+        ir_load       => ir_load,
+        op_load       => op_load,
+        pc_src_sel    => pc_src_sel,
         alu_operation => alu_operation,
-        alu_op1_sel => alu_op1_sel,
-        alu_op2_sel => alu_op2_sel,
-        clr_z_flag => clr_z_flag,
-        rf_input_sel => rf_input_sel,
-        ld_r => ld_r,
-        dm_wren => dm_wren,
-        dm_addr_sel => dm_addr_sel,
-        dm_data_sel => dm_data_sel,
-        sip => sip,
-        ssop_load => ssop_load,
-        sop => sop,
-        dpcr_load => dpcr_load,
+        alu_op1_sel   => alu_op1_sel,
+        alu_op2_sel   => alu_op2_sel,
+        clr_z_flag    => clr_z_flag,
+        rf_input_sel  => rf_input_sel,
+        ld_r          => ld_r,
+        dm_wren       => dm_wren,
+        dm_addr_sel   => dm_addr_sel,
+        dm_data_sel   => dm_data_sel,
+        sip           => sip,
+        ssop_load     => ssop_load,
+        sop           => sop,
+        dpcr_load     => dpcr_load,
         dpcr_data_sel => dpcr_data_sel,
-        dpcr => dpcr,
-        opcode => opcode,
-        am => am,
-        z_flag => z_flag,
-        rz_zero => rz_zero,
-        rz_out => rz_out,
-        rx_out => rx_out,
-        pc_out => pc_out
+        dpcr          => dpcr,
+        opcode        => opcode,
+        am            => am,
+        z_flag        => z_flag,
+        rz_zero       => rz_zero,
+        rz_out        => rz_out,
+        rx_out        => rx_out,
+        pc_out        => pc_out
     );
 
     stim : PROCESS
@@ -150,7 +152,7 @@ BEGIN
         -- LDR R1 #10 : x"4010" / x"000A"
         do_fetch(x"4010", x"000A", pm_data, ir_load, op_load);
         rf_input_sel <= "000";
-        ld_r <= '1';
+        ld_r         <= '1';
         tick;
         ld_r <= '0';
         ASSERT rz_out = x"000A"
@@ -159,7 +161,7 @@ BEGIN
         -- LDR R2 #6 : x"4020" / x"0006"
         do_fetch(x"4020", x"0006", pm_data, ir_load, op_load);
         rf_input_sel <= "000";
-        ld_r <= '1';
+        ld_r         <= '1';
         tick;
         ld_r <= '0';
         ASSERT rz_out = x"0006"
@@ -170,12 +172,12 @@ BEGIN
         -- =====================================================
         do_fetch(x"4831", x"0006", pm_data, ir_load, op_load);
         alu_operation <= alu_and;
-        alu_op1_sel <= "01";
-        alu_op2_sel <= '0';
-        rf_input_sel <= "011";
-        ld_r <= '1';
+        alu_op1_sel   <= "01";
+        alu_op2_sel   <= '0';
+        rf_input_sel  <= "011";
+        ld_r          <= '1';
         tick;
-        ld_r <= '0';
+        ld_r          <= '0';
         alu_operation <= alu_idle;
         ASSERT rz_out = x"0002"
         REPORT "FAIL T1: AND R3 R1 #6" SEVERITY ERROR;
@@ -183,12 +185,12 @@ BEGIN
         -- T2: AND R3 R3 R1 : R3 = 2 AND 10 = 2
         do_fetch(x"C831", x"0000", pm_data, ir_load, op_load);
         alu_operation <= alu_and;
-        alu_op1_sel <= "00";
-        alu_op2_sel <= '1';
-        rf_input_sel <= "011";
-        ld_r <= '1';
+        alu_op1_sel   <= "00";
+        alu_op2_sel   <= '1';
+        rf_input_sel  <= "011";
+        ld_r          <= '1';
         tick;
-        ld_r <= '0';
+        ld_r          <= '0';
         alu_operation <= alu_idle;
         ASSERT rz_out = x"0002"
         REPORT "FAIL T2: AND R3 R3 R1" SEVERITY ERROR;
@@ -198,12 +200,12 @@ BEGIN
         -- =====================================================
         do_fetch(x"4C31", x"0006", pm_data, ir_load, op_load);
         alu_operation <= alu_or;
-        alu_op1_sel <= "01";
-        alu_op2_sel <= '0';
-        rf_input_sel <= "011";
-        ld_r <= '1';
+        alu_op1_sel   <= "01";
+        alu_op2_sel   <= '0';
+        rf_input_sel  <= "011";
+        ld_r          <= '1';
         tick;
-        ld_r <= '0';
+        ld_r          <= '0';
         alu_operation <= alu_idle;
         ASSERT rz_out = x"000E"
         REPORT "FAIL T3: OR R3 R1 #6" SEVERITY ERROR;
@@ -211,12 +213,12 @@ BEGIN
         -- T4: OR R3 R3 R2 : R3 = 14 OR 6 = 14
         do_fetch(x"CC32", x"0000", pm_data, ir_load, op_load);
         alu_operation <= alu_or;
-        alu_op1_sel <= "00";
-        alu_op2_sel <= '1';
-        rf_input_sel <= "011";
-        ld_r <= '1';
+        alu_op1_sel   <= "00";
+        alu_op2_sel   <= '1';
+        rf_input_sel  <= "011";
+        ld_r          <= '1';
         tick;
-        ld_r <= '0';
+        ld_r          <= '0';
         alu_operation <= alu_idle;
         ASSERT rz_out = x"000E"
         REPORT "FAIL T4: OR R3 R3 R2" SEVERITY ERROR;
@@ -226,12 +228,12 @@ BEGIN
         -- =====================================================
         do_fetch(x"7831", x"0006", pm_data, ir_load, op_load);
         alu_operation <= alu_add;
-        alu_op1_sel <= "01";
-        alu_op2_sel <= '0';
-        rf_input_sel <= "011";
-        ld_r <= '1';
+        alu_op1_sel   <= "01";
+        alu_op2_sel   <= '0';
+        rf_input_sel  <= "011";
+        ld_r          <= '1';
         tick;
-        ld_r <= '0';
+        ld_r          <= '0';
         alu_operation <= alu_idle;
         ASSERT rz_out = x"0010"
         REPORT "FAIL T5: ADD R3 R1 #6" SEVERITY ERROR;
@@ -239,12 +241,12 @@ BEGIN
         -- T6: ADD R3 R3 R2 : R3 = 16 + 6 = 22
         do_fetch(x"F832", x"0000", pm_data, ir_load, op_load);
         alu_operation <= alu_add;
-        alu_op1_sel <= "00";
-        alu_op2_sel <= '1';
-        rf_input_sel <= "011";
-        ld_r <= '1';
+        alu_op1_sel   <= "00";
+        alu_op2_sel   <= '1';
+        rf_input_sel  <= "011";
+        ld_r          <= '1';
         tick;
-        ld_r <= '0';
+        ld_r          <= '0';
         alu_operation <= alu_idle;
         ASSERT rz_out = x"0016"
         REPORT "FAIL T6: ADD R3 R3 R2" SEVERITY ERROR;
@@ -254,12 +256,12 @@ BEGIN
         -- =====================================================
         do_fetch(x"4341", x"0003", pm_data, ir_load, op_load);
         alu_operation <= alu_sub;
-        alu_op1_sel <= "01";
-        alu_op2_sel <= '0';
-        rf_input_sel <= "011";
-        ld_r <= '1';
+        alu_op1_sel   <= "01";
+        alu_op2_sel   <= '0';
+        rf_input_sel  <= "011";
+        ld_r          <= '1';
         tick;
-        ld_r <= '0';
+        ld_r          <= '0';
         alu_operation <= alu_idle;
         ASSERT rz_out = x"0007"
         REPORT "FAIL T7: SUBV R4 R1 #3" SEVERITY ERROR;
@@ -270,9 +272,9 @@ BEGIN
         -- =====================================================
         do_fetch(x"4410", x"000A", pm_data, ir_load, op_load);
         alu_operation <= alu_sub;
-        alu_op1_sel <= "01";
-        alu_op2_sel <= '1';
-        ld_r <= '0';
+        alu_op1_sel   <= "01";
+        alu_op2_sel   <= '1';
+        ld_r          <= '0';
         tick;
         alu_operation <= alu_idle;
         ASSERT z_flag = '1'
@@ -280,9 +282,9 @@ BEGIN
 
         do_fetch(x"4410", x"0005", pm_data, ir_load, op_load);
         alu_operation <= alu_sub;
-        alu_op1_sel <= "01";
-        alu_op2_sel <= '1';
-        ld_r <= '0';
+        alu_op1_sel   <= "01";
+        alu_op2_sel   <= '1';
+        ld_r          <= '0';
         tick;
         alu_operation <= alu_idle;
         ASSERT z_flag = '0'
@@ -301,11 +303,11 @@ BEGIN
         -- Then: LDR R6 Rx (Rx=R2=6) reads DM[6] -> R6=10
         -- Upper LDR: AM=11 LDR=000000 Rz=0110 Rx=0010 = x"C062"
         do_fetch(x"C062", x"0000", pm_data, ir_load, op_load);
-        dm_addr_sel <= "10";
+        dm_addr_sel  <= "10";
         rf_input_sel <= "111";
-        ld_r <= '1';
+        ld_r         <= '1';
         tick;
-        ld_r <= '0';
+        ld_r        <= '0';
         dm_addr_sel <= "00";
         ASSERT rz_out = x"000A"
         REPORT "FAIL T9: LDR Rz Rx" SEVERITY ERROR;
@@ -319,7 +321,7 @@ BEGIN
         do_fetch(x"8060", x"0006", pm_data, ir_load, op_load);
         tick;
         rf_input_sel <= "111";
-        ld_r <= '1';
+        ld_r         <= '1';
         tick;
         ld_r <= '0';
         ASSERT rz_out = x"000A"
@@ -333,9 +335,9 @@ BEGIN
         do_fetch(x"4210", x"00AA", pm_data, ir_load, op_load);
         dm_addr_sel <= "01";
         dm_data_sel <= "01";
-        dm_wren <= '1';
+        dm_wren     <= '1';
         tick;
-        dm_wren <= '0';
+        dm_wren     <= '0';
         dm_addr_sel <= "00";
         dm_data_sel <= "00";
 
@@ -344,7 +346,7 @@ BEGIN
         do_fetch(x"8060", x"000A", pm_data, ir_load, op_load);
         tick;
         rf_input_sel <= "111";
-        ld_r <= '1';
+        ld_r         <= '1';
         tick;
         ld_r <= '0';
         ASSERT rz_out = x"00AA"
@@ -357,16 +359,16 @@ BEGIN
         -- =====================================================
         do_fetch(x"C212", x"0000", pm_data, ir_load, op_load);
         dm_addr_sel <= "01";
-        dm_wren <= '1';
+        dm_wren     <= '1';
         tick;
-        dm_wren <= '0';
+        dm_wren     <= '0';
         dm_addr_sel <= "00";
 
         -- Read back with LDR R6 $0x000A to verify -> expect 6
         do_fetch(x"8060", x"000A", pm_data, ir_load, op_load);
         tick;
         rf_input_sel <= "111";
-        ld_r <= '1';
+        ld_r         <= '1';
         tick;
         ld_r <= '0';
         ASSERT rz_out = x"0006"
@@ -386,7 +388,7 @@ BEGIN
         do_fetch(x"8060", x"0010", pm_data, ir_load, op_load);
         tick;
         rf_input_sel <= "111";
-        ld_r <= '1';
+        ld_r         <= '1';
         tick;
         ld_r <= '0';
         ASSERT rz_out = x"0006"
@@ -397,9 +399,9 @@ BEGIN
         -- =====================================================
         do_fetch(x"4410", x"000A", pm_data, ir_load, op_load);
         alu_operation <= alu_sub;
-        alu_op1_sel <= "01";
-        alu_op2_sel <= '1';
-        ld_r <= '0';
+        alu_op1_sel   <= "01";
+        alu_op2_sel   <= '1';
+        ld_r          <= '0';
         tick;
         alu_operation <= alu_idle;
         ASSERT z_flag = '1'
@@ -435,9 +437,9 @@ BEGIN
         -- =====================================================
         do_fetch(x"D802", x"0000", pm_data, ir_load, op_load);
         pc_src_sel <= '1';
-        pc_load <= '1';
+        pc_load    <= '1';
         tick;
-        pc_load <= '0';
+        pc_load    <= '0';
         pc_src_sel <= '0';
         ASSERT pc_out = x"0006"
         REPORT "FAIL T16b: JMP Rx" SEVERITY ERROR;
@@ -449,7 +451,7 @@ BEGIN
         sip <= x"ABCD";
         do_fetch(x"F750", x"0000", pm_data, ir_load, op_load);
         rf_input_sel <= "101";
-        ld_r <= '1';
+        ld_r         <= '1';
         tick;
         ld_r <= '0';
         ASSERT rz_out = x"ABCD"
@@ -500,9 +502,9 @@ BEGIN
         do_fetch(x"9D00", x"0030", pm_data, ir_load, op_load);
         -- pc_out = 0x0102 here
         dm_data_sel <= "10";
-        dm_wren <= '1';
+        dm_wren     <= '1';
         tick;
-        dm_wren <= '0';
+        dm_wren     <= '0';
         dm_data_sel <= "00";
 
         -- Verify: LDR R6 $0x0030 -> expect 0x0102
@@ -511,7 +513,7 @@ BEGIN
         do_fetch(x"8060", x"0030", pm_data, ir_load, op_load);
         tick; -- address registration latency
         rf_input_sel <= "111";
-        ld_r <= '1';
+        ld_r         <= '1';
         tick;
         ld_r <= '0';
         ASSERT rz_out = x"0102"
@@ -524,9 +526,9 @@ BEGIN
         -- =====================================================
         do_fetch(x"4410", x"000A", pm_data, ir_load, op_load);
         alu_operation <= alu_sub;
-        alu_op1_sel <= "01";
-        alu_op2_sel <= '1';
-        ld_r <= '0';
+        alu_op1_sel   <= "01";
+        alu_op2_sel   <= '1';
+        ld_r          <= '0';
         tick;
         alu_operation <= alu_idle;
 
@@ -562,7 +564,7 @@ BEGIN
         -- =====================================================
         do_fetch(x"5E10", x"0007", pm_data, ir_load, op_load);
         rf_input_sel <= "100";
-        ld_r <= '1';
+        ld_r         <= '1';
         tick;
         ld_r <= '0';
         ASSERT rz_out = x"000A"
@@ -574,7 +576,7 @@ BEGIN
         -- =====================================================
         do_fetch(x"5E20", x"000A", pm_data, ir_load, op_load);
         rf_input_sel <= "100";
-        ld_r <= '1';
+        ld_r         <= '1';
         tick;
         ld_r <= '0';
         ASSERT rz_out = x"000A"
@@ -598,10 +600,10 @@ BEGIN
         -- Upper: AM=01 DATACALL=101001 Rz=0000 Rx=0001 = x"6901"
         -- =====================================================
         do_fetch(x"6901", x"00BB", pm_data, ir_load, op_load);
-        dpcr_load <= '1';
+        dpcr_load     <= '1';
         dpcr_data_sel <= '1';
         tick;
-        dpcr_load <= '0';
+        dpcr_load     <= '0';
         dpcr_data_sel <= '0';
         ASSERT dpcr(31 DOWNTO 16) = x"000A"
         REPORT "FAIL T25: DATACALL Rx #value upper" SEVERITY ERROR;

@@ -1,32 +1,33 @@
 -- Zoran Salcic
 
-library IEEE;
-use IEEE.std_logic_1164.all;
-use IEEE.numeric_std.all;
-use work.recop_types.all;
-use work.various_constants.all;
-use work.opcodes.all;
+LIBRARY IEEE;
+USE IEEE.std_logic_1164.ALL;
+USE IEEE.numeric_std.ALL;
+USE work.recop_types.ALL;
+USE work.various_constants.ALL;
+USE work.opcodes.ALL;
 
-entity memory is
-	port (
-		clk: in bit_1 := '0';
+ENTITY memory IS
+	PORT
+	(
+		clk        : IN bit_1   := '0';
 		--pm_rd: in bit_1 := '0';
-		pm_address: in bit_16 := X"0000";
-		pm_outdata: out bit_16 := X"0000";
-		
-		--dm_rd: in bit_1 := '0';
-		dm_address: in bit_16 := X"0000";
-		dm_outdata: out bit_16 := X"0000";
-		
-		dm_wr: in bit_1 := '0';
-		dm_indata: in bit_16 := X"0000"
-		
-		);
-end memory;
+		pm_address : IN bit_16  := X"0000";
+		pm_outdata : OUT bit_16 := X"0000";
 
-architecture beh of memory is
-	type memory_array is array (31 downto 0) of bit_16;
-	signal memory: memory_array:=(X"abcd",X"0000",X"0000",X"0000",X"0000",X"0000",X"0000",X"0000",X"0000",X"0000",X"0000",
+		--dm_rd: in bit_1 := '0';
+		dm_address : IN bit_16  := X"0000";
+		dm_outdata : OUT bit_16 := X"0000";
+
+		dm_wr      : IN bit_1   := '0';
+		dm_indata  : IN bit_16  := X"0000"
+
+	);
+END memory;
+
+ARCHITECTURE beh OF memory IS
+	TYPE memory_array IS ARRAY (31 DOWNTO 0) OF bit_16;
+	SIGNAL memory : memory_array := (X"abcd", X"0000", X"0000", X"0000", X"0000", X"0000", X"0000", X"0000", X"0000", X"0000", X"0000",
 	--X"0002",
 	--am_immediate&present&X"d"&X"d",
 	--X"0000",
@@ -54,55 +55,53 @@ architecture beh of memory is
 	-- X"001f",
 	-- am_direct&ldr&X"6"&X"7",
 	X"0015",
-	am_direct&ldr&X"0"&X"0",
+	am_direct & ldr & X"0" & X"0",
 	X"0015",
-	am_direct&strpc&X"0"&X"0",
+	am_direct & strpc & X"0" & X"0",
 	X"0001",
-	am_immediate&max&X"c"&X"c",
-	am_register&ssop&X"4"&X"4",
-	am_register&lsip&X"4"&X"4",
-	am_register&ssvop&X"3"&X"3",
-	am_inherent&cer&X"0"&X"0",
-	am_inherent&ceot&X"0"&X"0",
-	am_inherent&seot&X"0"&X"0",
-	am_register&ler&X"3"&X"3",
+	am_immediate & max & X"c" & X"c",
+	am_register & ssop & X"4" & X"4",
+	am_register & lsip & X"4" & X"4",
+	am_register & ssvop & X"3" & X"3",
+	am_inherent & cer & X"0" & X"0",
+	am_inherent & ceot & X"0" & X"0",
+	am_inherent & seot & X"0" & X"0",
+	am_register & ler & X"3" & X"3",
 	X"0008",
-	am_immediate&ldr&X"e"&X"e",
+	am_immediate & ldr & X"e" & X"e",
 	X"400a",
-	am_immediate&subr&X"1"&X"8",
+	am_immediate & subr & X"1" & X"8",
 	X"000b",
-	am_immediate&andr&X"0"&X"0",
-	am_register&orr&X"2"&X"a",
-	am_register&addr&X"5"&X"2");
+	am_immediate & andr & X"0" & X"0",
+	am_register & orr & X"2" & X"a",
+	am_register & addr & X"5" & X"2");
 
-begin
+BEGIN
 	-- process (clk)
 	-- begin
-		-- if rising_edge(clk) then
-			-- if pm_rd = '1' then
-				-- pm_data <= memory(to_integer(unsigned(pm_address)));
-			-- end if;
-			-- if dm_rd = '1' then
-				-- dm_data <= memory(to_integer(unsigned(dm_address)));
-			-- end if;
-		-- end if;
+	-- if rising_edge(clk) then
+	-- if pm_rd = '1' then
+	-- pm_data <= memory(to_integer(unsigned(pm_address)));
+	-- end if;
+	-- if dm_rd = '1' then
+	-- dm_data <= memory(to_integer(unsigned(dm_address)));
+	-- end if;
+	-- end if;
 	-- end process;
-	process (clk)
-	begin
-		if falling_edge(clk) then
-			if dm_wr = '1' then
-				memory(to_integer(unsigned(dm_address)))<= dm_indata;
-			end if;
-		end if;
-	end process;
-	
-	process (clk)
-	begin
-		if falling_edge(clk) then
+	PROCESS (clk)
+	BEGIN
+		IF falling_edge(clk) THEN
+			IF dm_wr = '1' THEN
+				memory(to_integer(unsigned(dm_address))) <= dm_indata;
+			END IF;
+		END IF;
+	END PROCESS;
+
+	PROCESS (clk)
+	BEGIN
+		IF falling_edge(clk) THEN
 			pm_outdata <= memory(to_integer(unsigned(pm_address)));
 			dm_outdata <= memory(to_integer(unsigned(dm_address)));
-		end if;
-	end process;
-
-	
-end beh;
+		END IF;
+	END PROCESS;
+END beh;

@@ -1,29 +1,29 @@
 --Zoran Salcic
 
-library ieee;
-use ieee.std_logic_1164.all;
-package recop_types is
-	
-	subtype bit_32 is std_logic_vector(31 downto 0);
-	subtype bit_23 is std_logic_vector(22 downto 0);
-	subtype bit_22 is std_logic_vector(21 downto 0);
-	subtype bit_20 is std_logic_vector(19 downto 0); -- (sungchul)
-	subtype bit_19 is std_logic_vector(18 downto 0); -- (sungchul)
-	subtype bit_18 is std_logic_vector(17 downto 0);
-	subtype bit_17 is std_logic_vector(16 downto 0);
-	subtype bit_16 is std_logic_vector(15 downto 0);
-	subtype bit_13 is std_logic_vector(12 downto 0);
-	subtype bit_12 is std_logic_vector(11 downto 0);
-	subtype bit_11 is std_logic_vector(10 downto 0);
-	subtype bit_10 is std_logic_vector(9 downto 0);
-	subtype bit_9 is std_logic_vector(8 downto 0);
-	subtype bit_8 is std_logic_vector(7 downto 0);
-	subtype bit_7 is std_logic_vector(6 downto 0);
-	subtype bit_6 is std_logic_vector(5 downto 0);
-	subtype bit_5 is std_logic_vector(4 downto 0);
-	subtype bit_4 is std_logic_vector(3 downto 0);
-	subtype bit_3 is std_logic_vector(2 downto 0);
-	subtype bit_2 is std_logic_vector(1 downto 0);
-	subtype bit_1 is std_logic;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+PACKAGE recop_types IS
 
-end recop_types;
+	SUBTYPE bit_32 IS STD_LOGIC_VECTOR(31 DOWNTO 0);
+	SUBTYPE bit_23 IS STD_LOGIC_VECTOR(22 DOWNTO 0);
+	SUBTYPE bit_22 IS STD_LOGIC_VECTOR(21 DOWNTO 0);
+	SUBTYPE bit_20 IS STD_LOGIC_VECTOR(19 DOWNTO 0); -- (sungchul)
+	SUBTYPE bit_19 IS STD_LOGIC_VECTOR(18 DOWNTO 0); -- (sungchul)
+	SUBTYPE bit_18 IS STD_LOGIC_VECTOR(17 DOWNTO 0);
+	SUBTYPE bit_17 IS STD_LOGIC_VECTOR(16 DOWNTO 0);
+	SUBTYPE bit_16 IS STD_LOGIC_VECTOR(15 DOWNTO 0);
+	SUBTYPE bit_13 IS STD_LOGIC_VECTOR(12 DOWNTO 0);
+	SUBTYPE bit_12 IS STD_LOGIC_VECTOR(11 DOWNTO 0);
+	SUBTYPE bit_11 IS STD_LOGIC_VECTOR(10 DOWNTO 0);
+	SUBTYPE bit_10 IS STD_LOGIC_VECTOR(9 DOWNTO 0);
+	SUBTYPE bit_9 IS STD_LOGIC_VECTOR(8 DOWNTO 0);
+	SUBTYPE bit_8 IS STD_LOGIC_VECTOR(7 DOWNTO 0);
+	SUBTYPE bit_7 IS STD_LOGIC_VECTOR(6 DOWNTO 0);
+	SUBTYPE bit_6 IS STD_LOGIC_VECTOR(5 DOWNTO 0);
+	SUBTYPE bit_5 IS STD_LOGIC_VECTOR(4 DOWNTO 0);
+	SUBTYPE bit_4 IS STD_LOGIC_VECTOR(3 DOWNTO 0);
+	SUBTYPE bit_3 IS STD_LOGIC_VECTOR(2 DOWNTO 0);
+	SUBTYPE bit_2 IS STD_LOGIC_VECTOR(1 DOWNTO 0);
+	SUBTYPE bit_1 IS STD_LOGIC;
+
+END recop_types;

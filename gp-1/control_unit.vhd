@@ -20,48 +20,49 @@ USE work.various_constants.ALL;
 -- ============================================================
 
 ENTITY control_unit IS
-    PORT (
-        clk : IN STD_LOGIC;
-        reset : IN STD_LOGIC;
+    PORT
+    (
+        clk           : IN STD_LOGIC;
+        reset         : IN STD_LOGIC;
 
         -- ==================================================
         -- From Datapath
         -- ==================================================
-        am : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-        opcode : IN STD_LOGIC_VECTOR(5 DOWNTO 0);
-        z_flag : IN STD_LOGIC;
-        rz_zero : IN STD_LOGIC; -- '1' when Rz = x"0000" (PRESENT)
+        am            : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+        opcode        : IN STD_LOGIC_VECTOR(5 DOWNTO 0);
+        z_flag        : IN STD_LOGIC;
+        rz_zero       : IN STD_LOGIC;  -- '1' when Rz = x"0000" (PRESENT)
 
         -- ==================================================
         -- To Datapath
         -- ==================================================
         -- Fetch control
-        pc_load : OUT STD_LOGIC; -- load OPR into PC (jumps)
-        ir_load : OUT STD_LOGIC; -- FETCH_1: latch PM word into IR[31:16]
-        op_load : OUT STD_LOGIC; -- FETCH_2: latch PM word into IR[15:0] and OPR
+        pc_load       : OUT STD_LOGIC; -- load OPR into PC (jumps)
+        ir_load       : OUT STD_LOGIC; -- FETCH_1: latch PM word into IR[31:16]
+        op_load       : OUT STD_LOGIC; -- FETCH_2: latch PM word into IR[15:0] and OPR
 
         -- ALU control
         alu_operation : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
-        alu_op1_sel : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
-        alu_op2_sel : OUT STD_LOGIC;
-        clr_z_flag : OUT STD_LOGIC; -- CLFZ: clear zero flag
+        alu_op1_sel   : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+        alu_op2_sel   : OUT STD_LOGIC;
+        clr_z_flag    : OUT STD_LOGIC; -- CLFZ: clear zero flag
 
         -- Register file control
-        rf_input_sel : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
-        ld_r : OUT STD_LOGIC;
+        rf_input_sel  : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+        ld_r          : OUT STD_LOGIC;
 
         -- Data memory control
-        dm_wren : OUT STD_LOGIC;
+        dm_wren       : OUT STD_LOGIC;
 
         -- Addressing mux selects
-        pc_src_sel : OUT STD_LOGIC; -- '0'=OPR (JMP #), '1'=Rx (JMP Rx)
-        dm_addr_sel : OUT STD_LOGIC_VECTOR(1 DOWNTO 0); -- "00"=OPR, "01"=Rz, "10"=Rx
-        dm_data_sel : OUT STD_LOGIC_VECTOR(1 DOWNTO 0); -- "00"=Rx, "01"=OPR, "10"=PC
+        pc_src_sel    : OUT STD_LOGIC;                    -- '0'=OPR (JMP #), '1'=Rx (JMP Rx)
+        dm_addr_sel   : OUT STD_LOGIC_VECTOR(1 DOWNTO 0); -- "00"=OPR, "01"=Rz, "10"=Rx
+        dm_data_sel   : OUT STD_LOGIC_VECTOR(1 DOWNTO 0); -- "00"=Rx, "01"=OPR, "10"=PC
 
         -- SOP / DPCR control
-        ssop_load : OUT STD_LOGIC; -- SSOP: latch Rx into SOP register
-        dpcr_load : OUT STD_LOGIC; -- DATACALL: latch into DPCR
-        dpcr_data_sel : OUT STD_LOGIC -- '0'=R7 lower, '1'=OPR lower
+        ssop_load     : OUT STD_LOGIC;                    -- SSOP: latch Rx into SOP register
+        dpcr_load     : OUT STD_LOGIC;                    -- DATACALL: latch into DPCR
+        dpcr_data_sel : OUT STD_LOGIC                     -- '0'=R7 lower, '1'=OPR lower
     );
 END ENTITY control_unit;
 
@@ -120,21 +121,21 @@ BEGIN
     output_logic : PROCESS (state, am, opcode, z_flag, rz_zero)
     BEGIN
         -- Safe defaults: no writes, no loads, ALU idle
-        pc_load <= '0';
-        ir_load <= '0';
-        op_load <= '0';
+        pc_load       <= '0';
+        ir_load       <= '0';
+        op_load       <= '0';
         alu_operation <= alu_idle;
-        alu_op1_sel <= "00";
-        alu_op2_sel <= '0';
-        clr_z_flag <= '0';
-        rf_input_sel <= "000";
-        ld_r <= '0';
-        dm_wren <= '0';
-        pc_src_sel <= '0';
-        dm_addr_sel <= "00";
-        dm_data_sel <= "00";
-        ssop_load <= '0';
-        dpcr_load <= '0';
+        alu_op1_sel   <= "00";
+        alu_op2_sel   <= '0';
+        clr_z_flag    <= '0';
+        rf_input_sel  <= "000";
+        ld_r          <= '0';
+        dm_wren       <= '0';
+        pc_src_sel    <= '0';
+        dm_addr_sel   <= "00";
+        dm_data_sel   <= "00";
+        ssop_load     <= '0';
+        dpcr_load     <= '0';
         dpcr_data_sel <= '0';
 
         CASE state IS
@@ -163,14 +164,14 @@ BEGIN
                         CASE am IS
                             WHEN am_immediate => -- LDR Rz #Op : Rz ← operand
                                 rf_input_sel <= "000";
-                                ld_r <= '1';
+                                ld_r         <= '1';
                             WHEN am_direct => -- LDR Rz $Op : Rz ← DM[operand]
                                 rf_input_sel <= "111";
-                                ld_r <= '1';
+                                ld_r         <= '1';
                             WHEN am_register => -- LDR Rz Rx  : Rz ← DM[Rx]
-                                dm_addr_sel <= "10";
+                                dm_addr_sel  <= "10";
                                 rf_input_sel <= "111";
-                                ld_r <= '1';
+                                ld_r         <= '1';
                             WHEN OTHERS => NULL;
                         END CASE;
 
@@ -184,10 +185,10 @@ BEGIN
                             WHEN am_immediate => -- STR Rz #Op : DM[Rz] ← Op
                                 dm_addr_sel <= "01";
                                 dm_data_sel <= "01";
-                                dm_wren <= '1';
+                                dm_wren     <= '1';
                             WHEN am_register => -- STR Rz Rx  : DM[Rz] ← Rx
                                 dm_addr_sel <= "01";
-                                dm_wren <= '1';
+                                dm_wren     <= '1';
                             WHEN OTHERS => NULL;
                         END CASE;
 
@@ -196,18 +197,18 @@ BEGIN
                         -- --------------------------------------------------
                     WHEN addr =>
                         CASE am IS
-                            WHEN am_immediate => -- ADD Rz Rx #Op : Rz ← Rx + OPR
-                                alu_op1_sel <= "01"; -- operand_1 = OPR
-                                alu_op2_sel <= '0'; -- operand_2 = Rx
+                            WHEN am_immediate =>   -- ADD Rz Rx #Op : Rz ← Rx + OPR
+                                alu_op1_sel   <= "01"; -- operand_1 = OPR
+                                alu_op2_sel   <= '0';  -- operand_2 = Rx
                                 alu_operation <= alu_add;
-                                rf_input_sel <= "011";
-                                ld_r <= '1';
-                            WHEN am_register => -- ADD Rz Rz Rx : Rz ← Rz + Rx
-                                alu_op1_sel <= "00"; -- operand_1 = Rx
-                                alu_op2_sel <= '1'; -- operand_2 = Rz
+                                rf_input_sel  <= "011";
+                                ld_r          <= '1';
+                            WHEN am_register =>    -- ADD Rz Rz Rx : Rz ← Rz + Rx
+                                alu_op1_sel   <= "00"; -- operand_1 = Rx
+                                alu_op2_sel   <= '1';  -- operand_2 = Rz
                                 alu_operation <= alu_add;
-                                rf_input_sel <= "011";
-                                ld_r <= '1';
+                                rf_input_sel  <= "011";
+                                ld_r          <= '1';
                             WHEN OTHERS => NULL;
                         END CASE;
 
@@ -216,23 +217,23 @@ BEGIN
                         -- --------------------------------------------------
                     WHEN subvr =>
                         CASE am IS
-                            WHEN am_immediate => -- SUBV Rz Rx #Op : Rz ← Rx - OPR
-                                alu_op1_sel <= "01"; -- operand_1 = OPR
-                                alu_op2_sel <= '0'; -- operand_2 = Rx
+                            WHEN am_immediate =>   -- SUBV Rz Rx #Op : Rz ← Rx - OPR
+                                alu_op1_sel   <= "01"; -- operand_1 = OPR
+                                alu_op2_sel   <= '0';  -- operand_2 = Rx
                                 alu_operation <= alu_sub;
-                                rf_input_sel <= "011";
-                                ld_r <= '1';
+                                rf_input_sel  <= "011";
+                                ld_r          <= '1';
                             WHEN OTHERS => NULL;
                         END CASE;
 
                         -- --------------------------------------------------
                         -- SUB: subtraction, Z flag only (no register write)
                         -- --------------------------------------------------
-                    WHEN subr => -- SUB Rz #Op : Z ← (Rz - OPR = 0)
-                        alu_op1_sel <= "01"; -- operand_1 = OPR
-                        alu_op2_sel <= '1'; -- operand_2 = Rz
+                    WHEN subr =>           -- SUB Rz #Op : Z ← (Rz - OPR = 0)
+                        alu_op1_sel   <= "01"; -- operand_1 = OPR
+                        alu_op2_sel   <= '1';  -- operand_2 = Rz
                         alu_operation <= alu_sub;
-                        ld_r <= '0'; -- result discarded, Z flag updates
+                        ld_r          <= '0'; -- result discarded, Z flag updates
 
                         -- --------------------------------------------------
                         -- AND: bitwise AND
@@ -240,17 +241,17 @@ BEGIN
                     WHEN andr =>
                         CASE am IS
                             WHEN am_immediate => -- AND Rz Rx #Op : Rz ← Rx AND OPR
-                                alu_op1_sel <= "01";
-                                alu_op2_sel <= '0';
+                                alu_op1_sel   <= "01";
+                                alu_op2_sel   <= '0';
                                 alu_operation <= alu_and;
-                                rf_input_sel <= "011";
-                                ld_r <= '1';
+                                rf_input_sel  <= "011";
+                                ld_r          <= '1';
                             WHEN am_register => -- AND Rz Rz Rx : Rz ← Rz AND Rx
-                                alu_op1_sel <= "00";
-                                alu_op2_sel <= '1';
+                                alu_op1_sel   <= "00";
+                                alu_op2_sel   <= '1';
                                 alu_operation <= alu_and;
-                                rf_input_sel <= "011";
-                                ld_r <= '1';
+                                rf_input_sel  <= "011";
+                                ld_r          <= '1';
                             WHEN OTHERS => NULL;
                         END CASE;
 
@@ -260,26 +261,26 @@ BEGIN
                     WHEN orr =>
                         CASE am IS
                             WHEN am_immediate => -- OR Rz Rx #Op : Rz ← Rx OR OPR
-                                alu_op1_sel <= "01";
-                                alu_op2_sel <= '0';
+                                alu_op1_sel   <= "01";
+                                alu_op2_sel   <= '0';
                                 alu_operation <= alu_or;
-                                rf_input_sel <= "011";
-                                ld_r <= '1';
+                                rf_input_sel  <= "011";
+                                ld_r          <= '1';
                             WHEN am_register => -- OR Rz Rz Rx : Rz ← Rz OR Rx
-                                alu_op1_sel <= "00";
-                                alu_op2_sel <= '1';
+                                alu_op1_sel   <= "00";
+                                alu_op2_sel   <= '1';
                                 alu_operation <= alu_or;
-                                rf_input_sel <= "011";
-                                ld_r <= '1';
+                                rf_input_sel  <= "011";
+                                ld_r          <= '1';
                             WHEN OTHERS => NULL;
                         END CASE;
 
                         -- --------------------------------------------------
                         -- MAX: maximum of Rz and OPR
                         -- --------------------------------------------------
-                    WHEN max => -- MAX Rz #Op : Rz ← MAX(Rz, OPR)
+                    WHEN max =>            -- MAX Rz #Op : Rz ← MAX(Rz, OPR)
                         rf_input_sel <= "100"; -- rz_max output from regfile
-                        ld_r <= '1';
+                        ld_r         <= '1';
                         -- Note: MAX unit in regfile compares Rz against ir_operand (OPR)
 
                         -- --------------------------------------------------
@@ -310,14 +311,14 @@ BEGIN
                         -- PRESENT: conditional jump if Rz = 0
                         -- --------------------------------------------------
                     WHEN present => -- PRESENT Rz #Op : if Rz=0 then PC←Op
-                        NULL; -- state machine handles branch; pc_load in ST_FETCH_JUMP
+                        NULL;           -- state machine handles branch; pc_load in ST_FETCH_JUMP
 
                         -- --------------------------------------------------
                         -- LSIP: load from SIP port
                         -- --------------------------------------------------
-                    WHEN lsip => -- LSIP Rz : Rz ← SIP
+                    WHEN lsip =>    -- LSIP Rz : Rz ← SIP
                         rf_input_sel <= "101";
-                        ld_r <= '1';
+                        ld_r         <= '1';
 
                         -- --------------------------------------------------
                         -- SSOP: store to SOP port
@@ -330,17 +331,17 @@ BEGIN
                         -- --------------------------------------------------
                     WHEN strpc => -- STRPC $Op : DM[OPR] ← PC
                         dm_data_sel <= "10";
-                        dm_wren <= '1';
+                        dm_wren     <= '1';
 
                         -- --------------------------------------------------
                         -- DATACALL: load DPCR register
                         -- --------------------------------------------------
                     WHEN datacall => -- DATACALL Rx : DPCR ← Rx & R7
-                        dpcr_load <= '1';
+                        dpcr_load     <= '1';
                         dpcr_data_sel <= '0';
 
                     WHEN datacall2 => -- DATACALL Rx #Op : DPCR ← Rx & Op
-                        dpcr_load <= '1';
+                        dpcr_load     <= '1';
                         dpcr_data_sel <= '1';
 
                     WHEN OTHERS =>

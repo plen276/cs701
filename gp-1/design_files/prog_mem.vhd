@@ -39,10 +39,11 @@ LIBRARY altera_mf;
 USE altera_mf.ALL;
 
 ENTITY prog_mem IS
-	PORT (
+	PORT
+	(
 		address : IN STD_LOGIC_VECTOR (14 DOWNTO 0);
-		clock : IN STD_LOGIC := '1';
-		q : OUT STD_LOGIC_VECTOR (15 DOWNTO 0)
+		clock   : IN STD_LOGIC := '1';
+		q       : OUT STD_LOGIC_VECTOR (15 DOWNTO 0)
 	);
 END prog_mem;
 ARCHITECTURE SYN OF prog_mem IS
@@ -51,26 +52,27 @@ ARCHITECTURE SYN OF prog_mem IS
 
 	COMPONENT altsyncram
 		GENERIC (
-			clock_enable_input_a : STRING;
-			clock_enable_output_a : STRING;
-			init_file : STRING;
+			clock_enable_input_a   : STRING;
+			clock_enable_output_a  : STRING;
+			init_file              : STRING;
 			intended_device_family : STRING;
-			lpm_hint : STRING;
-			lpm_type : STRING;
-			maximum_depth : NATURAL;
-			numwords_a : NATURAL;
-			operation_mode : STRING;
-			outdata_aclr_a : STRING;
-			outdata_reg_a : STRING;
-			ram_block_type : STRING;
-			widthad_a : NATURAL;
-			width_a : NATURAL;
-			width_byteena_a : NATURAL
+			lpm_hint               : STRING;
+			lpm_type               : STRING;
+			maximum_depth          : NATURAL;
+			numwords_a             : NATURAL;
+			operation_mode         : STRING;
+			outdata_aclr_a         : STRING;
+			outdata_reg_a          : STRING;
+			ram_block_type         : STRING;
+			widthad_a              : NATURAL;
+			width_a                : NATURAL;
+			width_byteena_a        : NATURAL
 		);
-		PORT (
+		PORT
+		(
 			address_a : IN STD_LOGIC_VECTOR (14 DOWNTO 0);
-			clock0 : IN STD_LOGIC;
-			q_a : OUT STD_LOGIC_VECTOR (15 DOWNTO 0)
+			clock0    : IN STD_LOGIC;
+			q_a       : OUT STD_LOGIC_VECTOR (15 DOWNTO 0)
 		);
 	END COMPONENT;
 
@@ -79,26 +81,27 @@ BEGIN
 
 	altsyncram_component : altsyncram
 	GENERIC MAP(
-		clock_enable_input_a => "BYPASS",
-		clock_enable_output_a => "BYPASS",
-		init_file => "./recop-asm/rawOutput.mif",
+		clock_enable_input_a   => "BYPASS",
+		clock_enable_output_a  => "BYPASS",
+		init_file              => "./recop-asm/rawOutput.mif",
 		intended_device_family => "Cyclone II",
-		lpm_hint => "ENABLE_RUNTIME_MOD=NO",
-		lpm_type => "altsyncram",
-		maximum_depth => 4096,
-		numwords_a => 32768,
-		operation_mode => "ROM",
-		outdata_aclr_a => "NONE",
-		outdata_reg_a => "UNREGISTERED",
-		ram_block_type => "M4K",
-		widthad_a => 15,
-		width_a => 16,
-		width_byteena_a => 1
+		lpm_hint               => "ENABLE_RUNTIME_MOD=NO",
+		lpm_type               => "altsyncram",
+		maximum_depth          => 4096,
+		numwords_a             => 32768,
+		operation_mode         => "ROM",
+		outdata_aclr_a         => "NONE",
+		outdata_reg_a          => "UNREGISTERED",
+		ram_block_type         => "M4K",
+		widthad_a              => 15,
+		width_a                => 16,
+		width_byteena_a        => 1
 	)
-	PORT MAP(
+	PORT MAP
+	(
 		address_a => address,
-		clock0 => clock,
-		q_a => sub_wire0
+		clock0    => clock,
+		q_a       => sub_wire0
 	);
 
 END SYN;
