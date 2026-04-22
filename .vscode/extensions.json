@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "pomdtr.excalidraw-editor",
+    "Vinrobot.vhdl-formatter",
+    "mshr-h.veriloghdl",
+    "yzhang.markdown-all-in-one",
+    "DavidAnson.vscode-markdownlint",
+    "darkriszty.markdown-table-prettify"
+  ]
+}
