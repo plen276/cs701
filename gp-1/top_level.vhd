@@ -1,5 +1,6 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
+USE ieee.numeric_std.ALL;
 
 -- ============================================================
 -- ReCOP GP1: DE1-SoC Board Top Level
@@ -7,16 +8,21 @@ USE ieee.std_logic_1164.ALL;
 -- KEY(0) held = reset (active low)
 -- SW(0)       = debug mode (freeze FSM)
 -- KEY(3)      = single step (advances FSM one state in debug mode)
--- SW(1)       = display select: '0'=PC on HEX3:0, '1'=Rz on HEX3:0
+-- SW(1)       = display select in debug mode: '0'=PC on HEX3:0, '1'=Rz on HEX3:0
 --
--- LEDR(0)     = debug mode indicator
--- LEDR(1)     = z_flag
--- LEDR(9:8)   = AM (2 bits)
--- LEDR(7:2)   = opcode (6 bits)
+-- Debug mode (SW(0)='1'):
+--   LEDR(0)     = debug mode indicator
+--   LEDR(1)     = z_flag
+--   LEDR(9:8)   = AM (2 bits)
+--   LEDR(7:2)   = opcode (6 bits)
+--   HEX3:HEX0   = PC or Rz (16-bit as 4 hex digits, SW(1) selects)
+--   HEX5        = FSM state digit (0-5)
+--   HEX4        = blanked
 --
--- HEX3:HEX0  = PC or Rz (16-bit as 4 hex digits, SW(1) selects)
--- HEX5:HEX4  = FSM state (single digit on HEX5, HEX4 blanked)
---   0=IDLE 1=FETCH_1 2=FETCH_2 3=WAIT_MEM 4=EXECUTE 5=FETCH_JUMP
+-- Run mode (SW(0)='0'):
+--   LEDR        = off
+--   HEX5,3:0    = rotating segment heartbeat
+--   HEX4        = blanked
 -- ============================================================
 
 ENTITY top_level IS
@@ -37,24 +43,32 @@ END ENTITY top_level;
 
 ARCHITECTURE structural OF top_level IS
 
-    SIGNAL clk         : STD_LOGIC;
-    SIGNAL reset       : STD_LOGIC;
-    SIGNAL z_flag      : STD_LOGIC;
+    SIGNAL clk                          : STD_LOGIC;
+    SIGNAL reset                        : STD_LOGIC;
+    SIGNAL z_flag                       : STD_LOGIC;
 
-    SIGNAL debug_mode  : STD_LOGIC;
-    SIGNAL debug_step  : STD_LOGIC;
+    SIGNAL debug_mode                   : STD_LOGIC;
+    SIGNAL debug_step                   : STD_LOGIC;
 
-    SIGNAL pc_val      : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL rz_val      : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL opcode_val  : STD_LOGIC_VECTOR(5 DOWNTO 0);
-    SIGNAL am_val      : STD_LOGIC_VECTOR(1 DOWNTO 0);
+    SIGNAL pc_val                       : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL rz_val                       : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL opcode_val                   : STD_LOGIC_VECTOR(5 DOWNTO 0);
+    SIGNAL am_val                       : STD_LOGIC_VECTOR(1 DOWNTO 0);
 
-    SIGNAL state_val   : STD_LOGIC_VECTOR(2 DOWNTO 0);
+    SIGNAL state_val                    : STD_LOGIC_VECTOR(2 DOWNTO 0);
 
-    SIGNAL display_val : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL display_val                  : STD_LOGIC_VECTOR(15 DOWNTO 0);
 
     -- KEY edge detection
-    SIGNAL key3_prev   : STD_LOGIC;
+    SIGNAL key3_prev                    : STD_LOGIC;
+
+    -- Hex digit outputs from decoders
+    SIGNAL seg0, seg1, seg2, seg3, seg5 : STD_LOGIC_VECTOR(6 DOWNTO 0);
+
+    -- Run-mode heartbeat
+    SIGNAL tick                         : UNSIGNED(23 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL hb_index                     : INTEGER RANGE 0 TO 5  := 0;
+    SIGNAL hb_seg                       : STD_LOGIC_VECTOR(6 DOWNTO 0);
 
     COMPONENT recop IS
         PORT
@@ -112,28 +126,68 @@ BEGIN
         state_out  => state_val
     );
 
-    -- LED assignments
-    LEDR(0)          <= debug_mode;
-    LEDR(1)          <= z_flag;
-    LEDR(9 DOWNTO 8) <= am_val;
-    LEDR(7 DOWNTO 2) <= opcode_val;
+    -- ============================================================
+    -- Heartbeat tick: 50 MHz / 2^23 ≈ 6 Hz segment step
+    -- ============================================================
+    heartbeat_proc : PROCESS (clk)
+    BEGIN
+        IF rising_edge(clk) THEN
+            tick <= tick + 1;
+            IF tick(22 DOWNTO 0) = 0 THEN
+                IF hb_index = 5 THEN
+                    hb_index <= 0;
+                ELSE
+                    hb_index <= hb_index + 1;
+                END IF;
+            END IF;
+        END IF;
+    END PROCESS heartbeat_proc;
 
-    -- 7-segment display value: PC or Rz selected by SW(8)
-    display_val      <= rz_val WHEN SW(1) = '1' ELSE
+    -- Heartbeat: light a single outer-ring segment in sequence (active low)
+    -- Segments: a=top, b=top-right, c=bottom-right, d=bottom, e=bottom-left, f=top-left
+    WITH hb_index SELECT hb_seg <=
+        "1111110" WHEN 0,
+        "1111101" WHEN 1,
+        "1111011" WHEN 2,
+        "1110111" WHEN 3,
+        "1101111" WHEN 4,
+        "1011111" WHEN 5,
+        "1111111" WHEN OTHERS;
+
+    -- ============================================================
+    -- LED output: debug = processor state, run = off
+    -- ============================================================
+    LEDR <= (am_val & opcode_val & z_flag & debug_mode) WHEN debug_mode = '1' ELSE
+        (OTHERS => '0');
+
+    -- ============================================================
+    -- HEX[3:0] value in debug = PC/Rz (ignored in run mode)
+    -- ============================================================
+    display_val <= rz_val WHEN debug_mode = '1' AND SW(1) = '1' ELSE
         pc_val;
 
     H0 : hex_to_7seg PORT
-    MAP (hex_in => display_val(3 DOWNTO 0), seg_out => HEX0);
+    MAP (hex_in => display_val(3 DOWNTO 0), seg_out => seg0);
     H1 : hex_to_7seg PORT
-    MAP (hex_in => display_val(7 DOWNTO 4), seg_out => HEX1);
+    MAP (hex_in => display_val(7 DOWNTO 4), seg_out => seg1);
     H2 : hex_to_7seg PORT
-    MAP (hex_in => display_val(11 DOWNTO 8), seg_out => HEX2);
+    MAP (hex_in => display_val(11 DOWNTO 8), seg_out => seg2);
     H3 : hex_to_7seg PORT
-    MAP (hex_in => display_val(15 DOWNTO 12), seg_out => HEX3);
-
-    -- FSM state on HEX5 (0-5), HEX4 blanked
+    MAP (hex_in => display_val(15 DOWNTO 12), seg_out => seg3);
+    -- FSM state on HEX5 (0-5)
     H5 : hex_to_7seg PORT
-    MAP (hex_in => '0' & state_val, seg_out => HEX5);
-    HEX4 <= "1111111";
+    MAP (hex_in => '0' & state_val, seg_out => seg5);
+
+    HEX0 <= seg0 WHEN debug_mode = '1' ELSE
+        hb_seg;
+    HEX1 <= seg1 WHEN debug_mode = '1' ELSE
+        hb_seg;
+    HEX2 <= seg2 WHEN debug_mode = '1' ELSE
+        hb_seg;
+    HEX3 <= seg3 WHEN debug_mode = '1' ELSE
+        hb_seg;
+    HEX4 <= "1111111"; -- always blank
+    HEX5 <= seg5 WHEN debug_mode = '1' ELSE
+        hb_seg;
 
 END ARCHITECTURE structural;
