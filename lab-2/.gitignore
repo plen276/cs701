@@ -1,0 +1,22 @@
+/db/
+/incremental_db/
+/output_files/
+/simulation/
+
+*.bak
+*.qws
+*.rpt
+*.txt
+
+# Platform Designer generated synthesis output (regenerate via Generate HDL in Platform Designer)
+**/synthesis/
+
+# Eclipse Nios II IDE
+software/RemoteSystemsTempFiles/
+**/Debug/
+**/Release/
+**/*.elf
+**/*.o
+**/*.d
+**/*.map
+

@@ -1,0 +1,486 @@
+{
+  "table_of_contents": [
+    {
+      "title": "COMPSYS 701 Lab 2 \u2013 Network-on-Chip Reference Design",
+      "heading_level": null,
+      "page_id": 0,
+      "polygon": [
+        [
+          111.75,
+          120.0225830078125
+        ],
+        [
+          482.8221740722656,
+          120.0225830078125
+        ],
+        [
+          482.8221740722656,
+          136.10260009765625
+        ],
+        [
+          111.75,
+          136.10260009765625
+        ]
+      ]
+    },
+    {
+      "title": "1. Introduction",
+      "heading_level": null,
+      "page_id": 0,
+      "polygon": [
+        [
+          72.0,
+          211.7333984375
+        ],
+        [
+          170.253662109375,
+          211.7333984375
+        ],
+        [
+          170.253662109375,
+          228.5025634765625
+        ],
+        [
+          72.0,
+          228.5025634765625
+        ]
+      ]
+    },
+    {
+      "title": "2. Reference Design Overview",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          70.42578125,
+          74.66253662109375
+        ],
+        [
+          266.60736083984375,
+          74.66253662109375
+        ],
+        [
+          266.60736083984375,
+          90.7425537109375
+        ],
+        [
+          70.42578125,
+          90.7425537109375
+        ]
+      ]
+    },
+    {
+      "title": "2.1 Application-specific processors",
+      "heading_level": null,
+      "page_id": 1,
+      "polygon": [
+        [
+          71.0078125,
+          636.5352478027344
+        ],
+        [
+          252.31797790527344,
+          636.5352478027344
+        ],
+        [
+          252.31797790527344,
+          649.4952545166016
+        ],
+        [
+          71.0078125,
+          649.4952545166016
+        ]
+      ]
+    },
+    {
+      "title": "2.2 System operation",
+      "heading_level": null,
+      "page_id": 2,
+      "polygon": [
+        [
+          70.42578125,
+          410.6952209472656
+        ],
+        [
+          183.09255981445312,
+          410.6952209472656
+        ],
+        [
+          183.09255981445312,
+          423.65521240234375
+        ],
+        [
+          70.42578125,
+          423.65521240234375
+        ]
+      ]
+    },
+    {
+      "title": "2.3 Network protocol",
+      "heading_level": null,
+      "page_id": 2,
+      "polygon": [
+        [
+          71.0078125,
+          663.8952331542969
+        ],
+        [
+          183.54620361328125,
+          663.8952331542969
+        ],
+        [
+          183.54620361328125,
+          676.8552398681641
+        ],
+        [
+          71.0078125,
+          676.8552398681641
+        ]
+      ]
+    },
+    {
+      "title": "2.4 Example sound waves",
+      "heading_level": null,
+      "page_id": 3,
+      "polygon": [
+        [
+          70.55919395465995,
+          439.3695458593054
+        ],
+        [
+          207.92443324937028,
+          439.3695458593054
+        ],
+        [
+          207.92443324937028,
+          449.86642920747994
+        ],
+        [
+          70.55919395465995,
+          449.86642920747994
+        ]
+      ]
+    },
+    {
+      "title": "2.5 Resource file",
+      "heading_level": null,
+      "page_id": 3,
+      "polygon": [
+        [
+          70.55919395465995,
+          719.0365093499554
+        ],
+        [
+          159.88413098236776,
+          719.0365093499554
+        ],
+        [
+          159.88413098236776,
+          728.7836153161176
+        ],
+        [
+          70.55919395465995,
+          728.7836153161176
+        ]
+      ]
+    },
+    {
+      "title": "3. Lab 2 tasks",
+      "heading_level": null,
+      "page_id": 4,
+      "polygon": [
+        [
+          71.58984375,
+          311.638671875
+        ],
+        [
+          160.14710998535156,
+          311.638671875
+        ],
+        [
+          160.14710998535156,
+          327.86260986328125
+        ],
+        [
+          71.58984375,
+          327.86260986328125
+        ]
+      ]
+    }
+  ],
+  "page_stats": [
+    {
+      "page_id": 0,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          130
+        ],
+        [
+          "Line",
+          37
+        ],
+        [
+          "Text",
+          5
+        ],
+        [
+          "SectionHeader",
+          2
+        ],
+        [
+          "ListItem",
+          2
+        ],
+        [
+          "ListGroup",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 1,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          171
+        ],
+        [
+          "Line",
+          28
+        ],
+        [
+          "Text",
+          5
+        ],
+        [
+          "SectionHeader",
+          2
+        ],
+        [
+          "PageFooter",
+          2
+        ],
+        [
+          "Figure",
+          1
+        ],
+        [
+          "Caption",
+          1
+        ],
+        [
+          "FigureGroup",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 2,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          197
+        ],
+        [
+          "Line",
+          38
+        ],
+        [
+          "Text",
+          6
+        ],
+        [
+          "SectionHeader",
+          2
+        ],
+        [
+          "PageFooter",
+          2
+        ],
+        [
+          "Figure",
+          1
+        ],
+        [
+          "Caption",
+          1
+        ],
+        [
+          "FigureGroup",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 3,
+      "text_extraction_method": "surya",
+      "block_counts": [
+        [
+          "TableCell",
+          65
+        ],
+        [
+          "Line",
+          34
+        ],
+        [
+          "Span",
+          22
+        ],
+        [
+          "Text",
+          5
+        ],
+        [
+          "SectionHeader",
+          2
+        ],
+        [
+          "PageFooter",
+          2
+        ],
+        [
+          "Table",
+          1
+        ],
+        [
+          "Caption",
+          1
+        ],
+        [
+          "Figure",
+          1
+        ],
+        [
+          "TableGroup",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 1,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 4,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          199
+        ],
+        [
+          "Line",
+          43
+        ],
+        [
+          "TableCell",
+          28
+        ],
+        [
+          "ListItem",
+          21
+        ],
+        [
+          "Text",
+          2
+        ],
+        [
+          "PageFooter",
+          2
+        ],
+        [
+          "ListGroup",
+          2
+        ],
+        [
+          "Table",
+          1
+        ],
+        [
+          "SectionHeader",
+          1
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 2,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    },
+    {
+      "page_id": 5,
+      "text_extraction_method": "pdftext",
+      "block_counts": [
+        [
+          "Span",
+          75
+        ],
+        [
+          "Line",
+          19
+        ],
+        [
+          "ListItem",
+          7
+        ],
+        [
+          "Text",
+          3
+        ],
+        [
+          "PageFooter",
+          2
+        ],
+        [
+          "ListGroup",
+          2
+        ]
+      ],
+      "block_metadata": {
+        "llm_request_count": 0,
+        "llm_error_count": 0,
+        "llm_tokens_used": 0,
+        "previous_text": "",
+        "previous_type": "",
+        "previous_order": 0
+      }
+    }
+  ],
+  "debug_data_path": ".\\lab-2-brief"
+}
