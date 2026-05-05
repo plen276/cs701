@@ -1,0 +1,38 @@
+# # File gsaved with Nlview version 6.3.8  2013-12-19 bk=1.2992 VDI=34 GEI=35
+# 
+preplace inst Nios_System_2A.clocks.sys_pll -pg 1
+preplace inst Nios_System_2A.BUTTON_pio -pg 1 -lvl 2 -y 250
+preplace inst Nios_System_2A.jtag_uart -pg 1 -lvl 2 -y 150
+preplace inst Nios_System_2A.clocks -pg 1 -lvl 1 -y 960
+preplace inst Nios_System_2A.SWITCH_pio -pg 1 -lvl 2 -y 870
+preplace inst Nios_System_2A -pg 1 -lvl 1 -y 40 -regy -20
+preplace inst Nios_System_2A.onchip_memory -pg 1 -lvl 1 -y 220
+preplace inst Nios_System_2A.clocks.reset_from_locked -pg 1
+preplace inst Nios_System_2A.LED_pio -pg 1 -lvl 2 -y 770
+preplace inst Nios_System_2A.HEX1_pio -pg 1 -lvl 2 -y 470
+preplace inst Nios_System_2A.cpu.cpu -pg 1
+preplace inst Nios_System_2A.HEX0_pio -pg 1 -lvl 2 -y 370
+preplace inst Nios_System_2A.cpu.clock_bridge -pg 1
+preplace inst Nios_System_2A.HEX3_pio -pg 1 -lvl 2 -y 670
+preplace inst Nios_System_2A.HEX2_pio -pg 1 -lvl 2 -y 570
+preplace inst Nios_System_2A.sdram -pg 1 -lvl 2 -y 970
+preplace inst Nios_System_2A.cpu.reset_bridge -pg 1
+preplace inst Nios_System_2A.cpu -pg 1 -lvl 1 -y 50
+preplace inst Nios_System_2A.high_res_timer -pg 1 -lvl 2 -y 50
+preplace netloc EXPORT<net_container>Nios_System_2A</net_container>(SLAVE)Nios_System_2A.hex3_pio_external_connection,(SLAVE)HEX3_pio.external_connection) 1 0 2 NJ 700 NJ
+preplace netloc EXPORT<net_container>Nios_System_2A</net_container>(SLAVE)Nios_System_2A.hex1_pio_external_connection,(SLAVE)HEX1_pio.external_connection) 1 0 2 NJ 500 NJ
+preplace netloc EXPORT<net_container>Nios_System_2A</net_container>(MASTER)Nios_System_2A.clocks_sdram_clk,(MASTER)clocks.sdram_clk) 1 1 2 NJ 1080 NJ
+preplace netloc EXPORT<net_container>Nios_System_2A</net_container>(SLAVE)Nios_System_2A.led_pio_external_connection,(SLAVE)LED_pio.external_connection) 1 0 2 NJ 800 NJ
+preplace netloc EXPORT<net_container>Nios_System_2A</net_container>(SLAVE)Nios_System_2A.clocks_ref_reset,(SLAVE)clocks.ref_reset) 1 0 1 NJ
+preplace netloc EXPORT<net_container>Nios_System_2A</net_container>(SLAVE)Nios_System_2A.button_pio_external_connection,(SLAVE)BUTTON_pio.external_connection) 1 0 2 NJ 310 NJ
+preplace netloc FAN_OUT<net_container>Nios_System_2A</net_container>(SLAVE)BUTTON_pio.irq,(MASTER)cpu.irq,(SLAVE)high_res_timer.irq,(SLAVE)jtag_uart.irq) 1 1 1 730
+preplace netloc EXPORT<net_container>Nios_System_2A</net_container>(SLAVE)clocks.ref_clk,(SLAVE)Nios_System_2A.clocks_ref_clk) 1 0 1 NJ
+preplace netloc EXPORT<net_container>Nios_System_2A</net_container>(SLAVE)Nios_System_2A.hex2_pio_external_connection,(SLAVE)HEX2_pio.external_connection) 1 0 2 NJ 600 NJ
+preplace netloc EXPORT<net_container>Nios_System_2A</net_container>(SLAVE)Nios_System_2A.hex0_pio_external_connection,(SLAVE)HEX0_pio.external_connection) 1 0 2 NJ 400 NJ
+preplace netloc INTERCONNECT<net_container>Nios_System_2A</net_container>(SLAVE)jtag_uart.avalon_jtag_slave,(SLAVE)SWITCH_pio.s1,(SLAVE)high_res_timer.s1,(SLAVE)HEX1_pio.s1,(SLAVE)LED_pio.s1,(SLAVE)BUTTON_pio.s1,(MASTER)cpu.instruction_master,(MASTER)cpu.data_master,(SLAVE)onchip_memory.s1,(SLAVE)HEX3_pio.s1,(SLAVE)HEX0_pio.s1,(SLAVE)cpu.debug_mem_slave,(SLAVE)sdram.s1,(SLAVE)HEX2_pio.s1) 1 0 2 230 920 670
+preplace netloc EXPORT<net_container>Nios_System_2A</net_container>(SLAVE)Nios_System_2A.sdram_wire,(SLAVE)sdram.wire) 1 0 2 NJ 1060 NJ
+preplace netloc FAN_OUT<net_container>Nios_System_2A</net_container>(SLAVE)sdram.reset,(SLAVE)HEX2_pio.reset,(SLAVE)SWITCH_pio.reset,(SLAVE)LED_pio.reset,(SLAVE)HEX0_pio.reset,(SLAVE)BUTTON_pio.reset,(SLAVE)HEX3_pio.reset,(SLAVE)high_res_timer.reset,(SLAVE)HEX1_pio.reset,(SLAVE)jtag_uart.reset,(SLAVE)onchip_memory.reset1,(SLAVE)cpu.reset,(MASTER)cpu.debug_reset_request) 1 0 2 270 210 710
+preplace netloc EXPORT<net_container>Nios_System_2A</net_container>(SLAVE)SWITCH_pio.external_connection,(SLAVE)Nios_System_2A.switch_pio_external_connection) 1 0 2 NJ 900 NJ
+preplace netloc FAN_OUT<net_container>Nios_System_2A</net_container>(SLAVE)sdram.clk,(SLAVE)BUTTON_pio.clk,(SLAVE)high_res_timer.clk,(SLAVE)HEX1_pio.clk,(SLAVE)HEX2_pio.clk,(SLAVE)SWITCH_pio.clk,(MASTER)clocks.sys_clk,(SLAVE)cpu.clk,(SLAVE)HEX0_pio.clk,(SLAVE)HEX3_pio.clk,(SLAVE)LED_pio.clk,(SLAVE)jtag_uart.clk,(SLAVE)onchip_memory.clk1) 1 0 2 250 190 650
+levelinfo -pg 1 0 200 1050
+levelinfo -hier Nios_System_2A 210 390 770 920
