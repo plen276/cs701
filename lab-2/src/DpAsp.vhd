@@ -14,13 +14,14 @@ entity DpAsp is
 end entity;
 
 architecture rtl of DpAsp is
+    signal avg : signed(15 downto 0) := (others => '0');
 begin
 
     process(clock)
         -- shift register: s0 = newest, s3 = oldest
         variable s0, s1, s2, s3 : signed(15 downto 0) := (others => '0');
         variable sum    : signed(17 downto 0);
-        variable avg    : signed(15 downto 0);
+        variable avg_v  : signed(15 downto 0);
         variable result : signed(16 downto 0);
     begin
         if rising_edge(clock) then
@@ -32,11 +33,12 @@ begin
                 s0 := signed(recv.data(15 downto 0));
 
                 -- moving average of 4 samples (sum then divide by 4)
-                sum := resize(s0, 18) + resize(s1, 18) + resize(s2, 18) + resize(s3, 18);
-                avg := signed(sum(17 downto 2));  -- arithmetic right shift by 2
+                sum   := resize(s0, 18) + resize(s1, 18) + resize(s2, 18) + resize(s3, 18);
+                avg_v := signed(sum(17 downto 2));  -- arithmetic right shift by 2
+                avg   <= avg_v;
 
                 -- double the average, then clip |result| to 4096
-                result := resize(avg, 17) + resize(avg, 17);
+                result := resize(avg_v, 17) + resize(avg_v, 17);
                 if result > to_signed(4096, 17) then
                     result := to_signed(4096, 17);
                 elsif result < to_signed(-4096, 17) then
