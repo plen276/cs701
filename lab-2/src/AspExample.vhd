@@ -1,132 +1,134 @@
-library ieee;
-use ieee.numeric_std.all;
-use ieee.std_logic_1164.all;
+LIBRARY ieee;
+USE ieee.numeric_std.ALL;
+USE ieee.std_logic_1164.ALL;
 
-library work;
-use work.TdmaMinTypes.all;
+LIBRARY work;
+USE work.TdmaMinTypes.ALL;
 
-entity AspExample is
-	port (
-		clock : in  std_logic;
-		key   : in  std_logic_vector(3 downto 0);
-		sw    : in  std_logic_vector(9 downto 0);
-		ledr  : out std_logic_vector(9 downto 0);
-		hex0  : out std_logic_vector(6 downto 0);
-		hex1  : out std_logic_vector(6 downto 0);
-		hex2  : out std_logic_vector(6 downto 0);
-		hex3  : out std_logic_vector(6 downto 0);
-		hex4  : out std_logic_vector(6 downto 0);
-		hex5  : out std_logic_vector(6 downto 0);
+ENTITY AspExample IS
+	PORT
+	(
+		clock : IN STD_LOGIC;
+		key   : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
+		sw    : IN STD_LOGIC_VECTOR(9 DOWNTO 0);
+		ledr  : OUT STD_LOGIC_VECTOR(9 DOWNTO 0);
+		hex0  : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
+		hex1  : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
+		hex2  : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
+		hex3  : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
+		hex4  : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
+		hex5  : OUT STD_LOGIC_VECTOR(6 DOWNTO 0);
 
-		send  : out tdma_min_port;
-		recv  : in  tdma_min_port
+		send  : OUT tdma_min_port;
+		recv  : IN tdma_min_port
 	);
-end entity;
+END ENTITY;
 
-architecture rtl of AspExample is
+ARCHITECTURE rtl OF AspExample IS
 
-	signal hexn : unsigned(23 downto 0) := x"000000";
+	SIGNAL hexn : unsigned(23 DOWNTO 0) := x"000000";
 
-begin
+BEGIN
 
 	ledr <= sw;
 
-	process(clock)
-		variable edge  : std_logic;
-		variable state : natural := 0;
-	begin
-		if rising_edge(clock) then
+	PROCESS (clock)
+		VARIABLE edge  : STD_LOGIC;
+		VARIABLE state : NATURAL := 0;
+	BEGIN
+		IF rising_edge(clock) THEN
 
 			-- Check for KEY0 press
-			if key(0) = '0' and edge = '1' then
-				if state > 4 then
+			IF key(0) = '0' AND edge = '1' THEN
+				IF state > 4 THEN
 					state := 4;
-				else
+				ELSE
 					state := 9;
-				end if;
+				END IF;
 				hexn <= hexn + 1;
-			end if;
+			END IF;
 			edge := key(0);
 
 			-- Process data if available
-			if recv.data(31 downto 28) = "1000" and recv.data(16) = '0' and key(2) = '1' then
+			IF recv.data(31 DOWNTO 28) = "1000" AND recv.data(16) = '0' AND key(2) = '1' THEN
 				send.addr <= x"01";
 				send.data <= recv.data;
-			elsif recv.data(31 downto 28) = "1000" and recv.data(16) = '1' and key(1) = '1' then
+			ELSIF recv.data(31 DOWNTO 28) = "1000" AND recv.data(16) = '1' AND key(1) = '1' THEN
 				send.addr <= x"01";
 				send.data <= recv.data;
 
-			-- Otherwise send configuration commands
-			-- State 0 is disabled, state 5 is enabled
-			else
-				case state is
+				-- Otherwise send configuration commands
+				-- State 0 is disabled, state 5 is enabled
+			ELSE
+				CASE state IS
 
-					-- Enable DAC channel 0
-					when 9 =>
+						-- Enable DAC channel 0
+					WHEN 9 =>
 						send.addr <= x"01";
 						send.data <= x"b1020000";
 						state := 8;
 
-					-- Enable DAC channel 1
-					when 8 =>
+						-- Enable DAC channel 1
+					WHEN 8 =>
 						send.addr <= x"01";
 						send.data <= x"b1030000";
 						state := 7;
 
-					-- Enable ADC channel 0, forward to DP-ASP (port 3)
-					when 7 =>
+						-- Enable ADC channel 0, forward to DP-ASP (port 3)
+					WHEN 7 =>
 						send.addr <= x"00";
 						send.data <= x"a0320000";
 						state := 6;
 
-					-- Enable ADC channel 1, forward to DP-ASP (port 3)
-					when 6 =>
+						-- Enable ADC channel 1, forward to DP-ASP (port 3)
+					WHEN 6 =>
 						send.addr <= x"00";
 						send.data <= x"a0330000";
 						state := 5;
 
-					-- Disable ADC channel 0
-					when 4 =>
+						-- Disable ADC channel 0
+					WHEN 4 =>
 						send.addr <= x"00";
 						send.data <= x"a0000000";
 						state := 3;
 
-					-- Disable ADC channel 1
-					when 3 =>
+						-- Disable ADC channel 1
+					WHEN 3 =>
 						send.addr <= x"00";
 						send.data <= x"a0010000";
 						state := 2;
 
-					-- Disable DAC channel 0
-					when 2 =>
+						-- Disable DAC channel 0
+					WHEN 2 =>
 						send.addr <= x"01";
 						send.data <= x"b1000000";
 						state := 1;
 
-					-- Disable DAC channel 1
-					when 1 =>
+						-- Disable DAC channel 1
+					WHEN 1 =>
 						send.addr <= x"01";
 						send.data <= x"b1010000";
 						state := 0;
 
-					when others =>
+					WHEN OTHERS =>
 						send.addr <= x"01";
 						send.data <= x"00000000";
-				end case;
-			end if;
+				END CASE;
+			END IF;
 
-		end if;
-	end process;
+		END IF;
+	END PROCESS;
 
-	hs6 : entity work.HexSeg6
-	port map (
-		hexn => std_logic_vector(hexn),
-		seg0 => hex0,
-		seg1 => hex1,
-		seg2 => hex2,
-		seg3 => hex3,
-		seg4 => hex4,
-		seg5 => hex5
-	);
+	hs6 : ENTITY work.HexSeg6
+		PORT MAP
+		(
+			hexn => STD_LOGIC_VECTOR(hexn),
+			seg0 => hex0,
+			seg1 => hex1,
+			seg2 => hex2,
+			seg3 => hex3,
+			seg4 => hex4,
+			seg5 => hex5
+		);
 
-end architecture;
+END ARCHITECTURE;
