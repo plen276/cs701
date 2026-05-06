@@ -55,7 +55,7 @@ begin
 
 	adc_dac : entity work.Audio
 	generic map (
-		enable_adc => false
+		enable_adc => true
 	)
 	port map (
 		ref_clock     => CLOCK3_50,

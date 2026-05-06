@@ -8,6 +8,7 @@ use work.TdmaMinTypes.all;
 entity DpAsp is
     port (
         clock : in  std_logic;
+        key   : in  std_logic_vector(3 downto 0);
         send  : out tdma_min_port;
         recv  : in  tdma_min_port
     );
@@ -59,9 +60,15 @@ begin
                     result := to_signed(-4096, 17);
                 end if;
 
-                -- forward to DAC-ASP at port 1, preserving channel bit
-                send.addr <= x"01";
-                send.data <= "100000000000000" & recv.data(16) & std_logic_vector(result(15 downto 0));
+                -- forward to DAC-ASP at port 1, unless muted by key
+                if (recv.data(16) = '0' and key(2) = '0') or
+                   (recv.data(16) = '1' and key(1) = '0') then
+                    send.addr <= (others => '0');
+                    send.data <= (others => '0');
+                else
+                    send.addr <= x"01";
+                    send.data <= "100000000000000" & recv.data(16) & std_logic_vector(result(15 downto 0));
+                end if;
             else
                 send.addr <= (others => '0');
                 send.data <= (others => '0');

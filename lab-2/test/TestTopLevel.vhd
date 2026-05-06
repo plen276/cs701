@@ -52,6 +52,7 @@ begin
 	dp_asp : entity work.DpAsp
 	port map (
 		clock => clock,
+		key   => "1111",
 		send  => send_port(3),
 		recv  => recv_port(3)
 	);
