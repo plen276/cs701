@@ -212,14 +212,14 @@ The supported window lengths are restricted to powers of two. This simplifies ha
 For the supported values of $L$, the required operations are:
 
 \begin{center}
-\begin{tabular}{cc}
-    \toprule
-    Window Length ($L$) & Scaling Operation \\
-    \midrule
-    4                   & Arithmetic right shift by 2 \\
-    8                   & Arithmetic right shift by 3 \\
+\begin{tabular}{|c|c|}
+    \hline
+    \textbf{Window Length ($L$)} & \textbf{Scaling Operation} \\
+    \hline
+    4                   & Arithmetic right shift by 2 \\ \hline
+    8                   & Arithmetic right shift by 3 \\ \hline
     16                  & Arithmetic right shift by 4 \\
-    \bottomrule
+    \hline
 \end{tabular}
 \end{center}
 
@@ -366,14 +366,14 @@ The running sum uses a signed 21-bit datapath to provide sufficient headroom for
 Scaling is performed using arithmetic right shifts:
 
 \begin{center}
-\begin{tabular}{cc}
-    \toprule
-    Window Length ($L$) & Shift Amount \\
-    \midrule
-    4                   & 2 \\
-    8                   & 3 \\
+\begin{tabular}{|c|c|}
+    \hline
+    \textbf{Window Length ($L$)} & \textbf{Shift Amount} \\
+    \hline
+    4                   & 2 \\ \hline
+    8                   & 3 \\ \hline
     16                  & 4 \\
-    \bottomrule
+    \hline
 \end{tabular}
 \end{center}
 
@@ -503,15 +503,15 @@ The Conf-DP packet configures the AVG-ASP.
 Packet type \texttt{1001} identifies a Conf-DP packet. The mode field selects the AVG-ASP operating mode:
 
 \begin{center}
-\begin{tabular}{ccl}
-    \toprule
-    Mode & Function & \\
-    \midrule
-    0000 & Bypass & \\
-    0001 & Moving average & $L=4$ \\
-    0010 & Moving average & $L=8$ \\
-    0011 & Moving average & $L=16$ \\
-    \bottomrule
+\begin{tabular}{|c|cl|}
+    \hline
+    \textbf{Mode} & \textbf{Function} & \\
+    \hline
+    0000          & Bypass            & \\ \hline
+    0001          & Moving average    & $L=4$ \\ \hline
+    0010          & Moving average    & $L=8$ \\ \hline
+    0011          & Moving average    & $L=16$ \\
+    \hline
 \end{tabular}
 \end{center}
 
@@ -751,9 +751,13 @@ The DDS frequency resolution is determined by the phase accumulator width. Incre
 \section{Hardware versus Software Implementation}
 \label{sec:performance_discussion}
 
-A C reference model was implemented for the AVG-ASP to describe the equivalent software behaviour. The model uses the same running-sum algorithm as the hardware design, including WARMUP behaviour, bypass mode, and power-of-two division using arithmetic right shifts. This provides a direct software baseline for comparing the RTL implementation against an equivalent sequential implementation. The core of the model is shown in Listing~\ref{lst:avg_ref}.
+A C reference model was implemented for the AVG-ASP to describe the equivalent software behaviour. The model uses the same running-sum algorithm as the hardware design, including WARMUP behaviour, bypass mode, and power-of-two division using arithmetic right shifts. This provides a direct software baseline for comparing the RTL implementation against an equivalent sequential implementation.
 
-\begin{lstlisting}[caption={Core of the AVG-ASP C reference model (\texttt{ip/sw/avg\_ref.c}).}, label={lst:avg_ref}]
+\begin{lstlisting}[
+    float,
+    caption={Core of the AVG-ASP C reference model (\texttt{ip/software/avg\_ref.c}).},
+    label={lst:avg_ref}
+]
 typedef struct {
     int16_t window[MAX_L];
     int32_t sum;
@@ -763,6 +767,25 @@ typedef struct {
     int shift;
     bool bypass;
 } AvgRef;
+
+void avg_init(AvgRef *avg, int mode) {
+    avg->sum = 0;
+    avg->count = 0;
+    avg->index = 0;
+    avg->bypass = false;
+
+    for (int i = 0; i < MAX_L; i++) {
+        avg->window[i] = 0;
+    }
+
+    switch (mode) {
+        case 0: avg->bypass = true; avg->L = 1;  avg->shift = 0; break;
+        case 1: avg->L = 4;  avg->shift = 2; break;
+        case 2: avg->L = 8;  avg->shift = 3; break;
+        case 3: avg->L = 16; avg->shift = 4; break;
+        default: avg->bypass = true; avg->L = 1; avg->shift = 0; break;
+    }
+}
 
 // Returns true when output is valid; false during WARMUP.
 bool avg_process_sample(AvgRef *avg, int16_t x, int16_t *y) {
@@ -779,9 +802,11 @@ bool avg_process_sample(AvgRef *avg, int16_t x, int16_t *y) {
     if (avg->count < avg->L) {            // WARMUP
         avg->sum += x;
         avg->count++;
+        
         if (avg->count < avg->L) {
             return false;
         }
+        
         *y = (int16_t)(avg->sum >> avg->shift);
         return true;
     }

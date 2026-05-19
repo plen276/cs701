@@ -65,6 +65,7 @@ BEGIN
 		recv  => adc_send
 		);
 
-	send_out <= avg_send.data;
+	send_out  <= avg_send.data;
+	send_port <= (OTHERS => (addr => (OTHERS => '0'), data => (OTHERS => '0')));
 
 END ARCHITECTURE;
