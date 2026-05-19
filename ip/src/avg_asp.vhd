@@ -5,38 +5,14 @@ USE ieee.std_logic_1164.ALL;
 LIBRARY work;
 USE work.TdmaMinTypes.ALL;
 
--- ============================================================
--- AVG-ASP  -  moving-average linear filter for the IP pipeline
--- (BRIEF kernel #2).
+-- AVG-ASP: moving-average filter, window L in {4,8,16} selected by the
+-- Conf-DP packet. Division is an arithmetic right shift by log2(L) (no
+-- divider). A running sum keeps the per-sample cost at 1 add and 1
+-- subtract regardless of L. Dual-channel. Drop-in NoC node (no reset /
+-- NODE_ID; idle = all-zeros).
 --
--- Adapted from Lab 2 DpAsp (fixed L=4, hardcoded destination, no
--- config decode). Upgrades for the IP:
---   * Conf-DP ("1001") decode: programmable window L and fwd dest
---   * L in {4,8,16} -> divide is an arithmetic right shift by
---     log2(L) (2/3/4); no divider (research-background line 94)
---   * running-sum datapath: sum += new - leaving (spec.md 5.4),
---     so cost is independent of L instead of an L-wide adder tree
---   * WARMUP boundary handling: emit nothing until L samples seen
---     (spec.md 5.7) - avoids division by a non-power-of-2
---   * dual-channel (ch via recv.data(16)), like DpAsp / AspAdc
---
--- Drop-in compatible with the Lab 2 TDMA-MIN NoC: no reset port,
--- no NODE_ID, state initialised at declaration, idle = all-zeros.
---
--- Packet formats (routing dest on send.addr, NOT in payload -
--- Lab 2 convention, spec.md #4/#5):
---
---   Conf-DP   (decoded, type "1001"):
---     31-28 type | 27-24 unused(0) | 23-20 Next | 19-16 Mode
---       | 15-0 unused
---     Mode: 0000 bypass | 0001 L=4 | 0010 L=8 | 0011 L=16
---     (OPEN DECISION #2 spec.md: agree encoding team-wide)
---
---   Data-Audio (in and out, type "1000"):
---     31-28 "1000" | 27-24 Dest | 23-17 zeros | 16 Ch | 15-0 sample
---     On emit, Dest = Next (also driven on send.addr for NoC
---     routing); on input the ASP ignores Dest (NoC already routed).
--- ============================================================
+-- Conf-DP    "1001": 23-20 Next | 19-16 Mode (0000 bypass, 0001/0010/0011 L=4/8/16)
+-- Data-Audio "1000": 27-24 Dest | 23-17 0 | 16 Ch | 15-0 signed sample
 
 ENTITY avg_asp IS
 	PORT
@@ -49,9 +25,7 @@ END ENTITY;
 
 ARCHITECTURE rtl OF avg_asp IS
 
-	---------------------------------------------------------------------------
 	-- Packet protocol constants (named, single source of truth)
-	---------------------------------------------------------------------------
 	CONSTANT TYPE_CONF_DP          : STD_LOGIC_VECTOR(3 DOWNTO 0) := "1001";
 	CONSTANT TYPE_DATA_AUDIO       : STD_LOGIC_VECTOR(3 DOWNTO 0) := "1000";
 
@@ -61,7 +35,7 @@ ARCHITECTURE rtl OF avg_asp IS
 	CONSTANT MODE_L16              : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0011";
 
 	-- Build a Data-Audio payload:
-	--   type(31:28) | Dest(27:24) | Reserved 0s(23:17) | Ch(16) | sample(15:0)
+	-- type(31:28) | Dest(27:24) | Reserved 0s(23:17) | Ch(16) | sample(15:0)
 	FUNCTION make_data_audio (dest : STD_LOGIC_VECTOR(3 DOWNTO 0);
 		ch                             : STD_LOGIC;
 		sample                         : signed(15 DOWNTO 0))
@@ -78,27 +52,21 @@ ARCHITECTURE rtl OF avg_asp IS
 		RETURN "0000" & dest;
 	END FUNCTION;
 
-	---------------------------------------------------------------------------
-	-- 16-deep window per channel; index 0 = newest, only the first
-	-- L taps are in the active window (window is always physically 16
-	-- deep regardless of L - spec.md 7.2, constant cost vs L).
-	---------------------------------------------------------------------------
+	-- Window is physically 16 deep regardless of L; only the first L
+	-- taps are active. Index 0 = newest.
 	TYPE win_t IS ARRAY(0 TO 15) OF signed(15 DOWNTO 0);
 
-	-- Config (one set for the whole ASP; both channels share L/Next).
+	-- Config shared by both channels.
 	SIGNAL next_addr : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0001";
 	SIGNAL l_len     : NATURAL RANGE 0 TO 16        := 4; -- 0 = bypass
 	SIGNAL shamt     : NATURAL RANGE 0 TO 4         := 2;
 
 BEGIN
 
-	---------------------------------------------------------------------------
-	-- Conf-DP decode + filter datapath. One Data-Audio packet arrives per
-	-- clock (serialised by the NoC), so a single clocked process handles
-	-- both channels without arbitration (mirrors DpAsp). A delivered
-	-- packet is visible on recv.data for exactly one clock, so each
-	-- sample is consumed exactly once.
-	---------------------------------------------------------------------------
+	-- One Data-Audio packet arrives per clock (NoC-serialised), so a
+	-- single process handles both channels without arbitration.
+	-- A delivered packet is visible on recv.data for exactly one clock,
+	-- so each sample is consumed exactly once.
 	filter : PROCESS (clock)
 		VARIABLE w0, w1     : win_t                 := (OTHERS => (OTHERS => '0'));
 		VARIABLE sum0, sum1 : signed(20 DOWNTO 0)   := (OTHERS => '0');
@@ -112,11 +80,10 @@ BEGIN
 		IF rising_edge(clock) THEN
 
 			IF recv.data(31 DOWNTO 28) = TYPE_CONF_DP THEN
-				-- Configuration: latch dest + window, reset both channels.
-				-- Only sum/cnt are reset, NOT the window buffers w0/w1:
-				-- this is safe because WARMUP refills the window with L
-				-- fresh samples before any leaving-tap is read, so any
-				-- stale pre-reconfig contents are overwritten first.
+				-- Latch dest + window and restart both channels. Only
+				-- sum/cnt are cleared, not w0/w1 buffers: WARMUP refills L fresh
+				-- samples before any leaving-tap is read, so stale window
+				-- contents cannot affect a result.
 				next_addr <= recv.data(23 DOWNTO 20);
 				CASE recv.data(19 DOWNTO 16) IS
 					WHEN MODE_L4 => l_len  <= 4;
@@ -147,6 +114,7 @@ BEGIN
 				ELSIF recv.data(16) = '0' THEN
 					-- Channel 0
 					IF cnt0 < l_len THEN
+						-- WARMUP: accumulate until the first full window
 						sum0 := sum0 + resize(x, sum0'length);
 						cnt0 := cnt0 + 1;
 						emit := (cnt0 = l_len); -- first full window

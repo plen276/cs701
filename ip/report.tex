@@ -1,0 +1,833 @@
+\documentclass[10pt, a4paper]{article}
+
+% --- Layout ---
+\usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
+\usepackage{setspace}
+\usepackage{parskip}
+
+% --- Font ---
+\usepackage[T1]{fontenc}
+\usepackage{times}              % Times New Roman (matches report style)
+
+% --- Headers & Footers ---
+\usepackage{fancyhdr}
+\usepackage{lastpage}           % for "Page X of Y"
+
+% --- TOC Customisation ---
+\usepackage{tocloft}
+
+% --- Math ---
+\usepackage{amsmath, amssymb, amsfonts}
+
+% --- Figures & Tables ---
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{wrapfig}            % text wrapping around figures (used in intro)
+
+% --- Section Formatting ---
+\usepackage{titlesec}
+
+% --- References & Links ---
+\usepackage[hidelinks]{hyperref}
+
+% --- Misc ---
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{booktabs}
+
+% --- Code Listings ---
+\usepackage{listings}
+\lstset{
+    language=C,
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\bfseries,
+    commentstyle=\itshape,
+    morekeywords={int16_t,int32_t,bool,true,false},
+    numbers=left,
+    numberstyle=\tiny,
+    numbersep=6pt,
+    frame=single,
+    breaklines=true,
+    showstringspaces=false,
+    captionpos=b,
+    xleftmargin=1.6em
+}
+
+% ============================================================
+% CONFIGURATION
+% ============================================================
+
+% --- Header/Footer Setup ---
+\pagestyle{fancy}
+\fancyhf{}
+% \fancyhead[L]{\small\textit{\reporttitle}}
+% \fancyhead[R]{\small\textit{\studentname}}
+\fancyfoot[C]{\small Page \thepage\ of \pageref{LastPage}}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Plain style for first page of sections
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyhead[L]{\small\textit{\reporttitle}}
+    \fancyhead[R]{\small\textit{\studentname}}
+    \fancyfoot[C]{\small Page \thepage\ of \pageref{LastPage}}
+    \renewcommand{\headrulewidth}{0.4pt}
+}
+
+% --- Section Numbering ---
+\setcounter{secnumdepth}{3}
+
+% --- TOC Formatting ---
+% Make section titles uppercase in TOC for unnumbered sections
+\renewcommand{\contentsname}{Table of Contents}
+\renewcommand{\cftsecfont}{\bfseries}
+\renewcommand{\cftsecpagefont}{\bfseries}
+\setlength{\cftbeforesecskip}{2pt}
+
+% ============================================================
+\begin{document}
+\pagenumbering{arabic}
+
+% ============================================================
+% TITLE PAGE
+% ============================================================
+\begin{titlepage}
+    \centering
+
+    {\LARGE\bfseries COMPSYS 701\par}
+    
+    % Horizontal rule above title
+    \noindent\rule{\linewidth}{0.8pt}
+
+    {\LARGE\bfseries Individual Project\par}
+
+    \noindent\rule{\linewidth}{0.8pt}
+
+    \vspace{1.5cm}
+
+    % Employer / workplace image
+    \includegraphics[width=0.5\linewidth]{company-logo.png}
+
+    \vspace{1.5cm}
+
+    \textbf{Pulasthi Lenaduwa}
+    
+    \small plen276
+
+    % \begin{center}
+    % \begin{tabular}{ccc}
+    % \textbf{Jonathan Cilliers} & \textbf{Pulasthi Lenaduwa} & \textbf{Wenjing Yuan} \\
+    % \small jcil831  & \small plen276 & \small wyua331 \\
+    % \end{tabular}
+    % \end{center}
+
+    \vspace{1.5cm}
+    {\normalsize Department of Electrical, Computer, and Software Engineering \par}
+
+    \vspace{1cm}
+
+    {\large\bfseries University of Auckland\par}
+    \vspace{0.2cm}
+    {\normalsize Auckland, New Zealand \par}
+
+    \vspace{1cm}
+
+
+    {\normalsize\bfseries Date of Report\par}
+    \vspace{0.2cm}
+    {\normalsize\itshape \today \par}
+
+    \vfill
+
+    {\small Page 1 of \pageref{LastPage}}
+
+\end{titlepage}
+
+% ============================================================
+% FRONT MATTER (unnumbered sections)
+% ============================================================
+
+\section{Introduction and Application Context}
+
+Modern power systems require accurate real-time monitoring of grid frequency to ensure stability, detect disturbances, and support protection and control systems. In this project, the target application is real-time power-system frequency measurement, in which a sampled voltage waveform is continuously processed under deterministic timing constraints. The overall system is implemented within a Heterogeneous Multiprocessor System-on-Chip (HMPSoC), in which dedicated hardware accelerators process streaming data cooperatively through a pipelined architecture.
+
+The HMPSoC partitions the signal-processing workload into multiple Application-Specific Processors (ASPs) connected through a Time-Division-Multiple-Access Multistage Interconnection Network (TDMA-MIN) Network-on-Chip (NoC). Each ASP performs a specialised operation on the streaming data while communicating through a common packet-based protocol over the NoC. This approach enables deterministic timing behaviour, modularity, and hardware-level acceleration of computationally intensive digital signal processing (DSP) tasks.
+
+This Individual Project (IP) focuses on the implementation of the first two stages of the processing pipeline:
+
+\begin{itemize}
+    \item \textbf{ADC-ASP} (Analogue-to-Digital-Converter ASP): an input/output ASP (IO-ASP) that emulates an analogue front-end by generating sampled waveform data internally. This allows the signal-processing chain to be tested without requiring a physical grid connection or external analogue hardware.
+    \item \textbf{AVG-ASP} (Averaging ASP): a data-processing ASP (DP-ASP) implementing a moving-average finite impulse response (FIR) filter. This corresponds to the linear filtering kernel specified in the project brief.
+\end{itemize}
+
+The implemented ASPs operate as part of the larger frequency-measurement processing pipeline:
+
+\begin{center}
+\texttt{ADC-ASP $\rightarrow$ AVG-ASP $\rightarrow$ COR-ASP $\rightarrow$ PD-ASP $\rightarrow$ Nios II}
+\end{center}
+
+In this pipeline, the ADC-ASP and AVG-ASP are developed as part of this IP, while the correlation ASP (COR-ASP) and peak-detection ASP (PD-ASP) are implemented by other members of the project team.
+
+System configuration follows a command-driven model in which all ASP nodes are configured before data transmission begins. In the intended HMPSoC architecture, configuration packets are issued by the Reactive and Concurrency Processor (ReCOP) and distributed over the NoC to configure node behaviour, routing destinations, operating modes, and sampling parameters. Once configured, the ASP pipeline operates autonomously on streaming data without software intervention. In this project, a dedicated state-machine-based configuration controller and simulation testbench are used in place of a physical ReCOP implementation, while preserving the intended packet protocol and operational model.
+
+The scope of this IP includes the RTL design, packet protocol implementation, verification, simulation, and FPGA synthesis of the ADC-ASP and AVG-ASP as reusable NoC-connected hardware modules. Existing TDMA-MIN infrastructure from Lab-2 is reused without modification.
+
+The motivation for implementing DSP kernels as dedicated ASP hardware arises from the deterministic throughput requirements of real-time streaming systems. Software execution on a general-purpose processor may introduce variable latency and insufficient throughput when processing continuous high-rate sample streams. By implementing filtering and signal generation in hardware, the ASP pipeline can process data concurrently and deterministically at the sample rate of the incoming signal. This hardware acceleration approach is discussed further in Section~\ref{sec:performance_discussion}.
+
+\newpage
+
+\section{Theoretical Background}
+
+\subsection{Moving Average Filtering}
+
+The AVG-ASP implements a moving-average (MA) filter, corresponding to the linear filtering kernel defined in the project brief. For an input sample sequence $X(i)$ and moving-average window length $L$, the filter output is defined as:
+
+\begin{equation}
+    Y(i)=\frac{1}{L}\sum_{k=i-L+1}^{i}X(k) 
+    \label{eq:moving_average}
+\end{equation}
+
+where the supported window lengths are:
+
+\begin{equation}
+    L \in \{4, 8, 16\}
+\end{equation}
+
+The implemented AVG-ASP uses a causal moving-average window suitable for real-time streaming operation. Each output sample is computed using the current input sample and the previous $L-1$ samples stored within the internal buffer.
+
+The moving-average filter smooths the input signal by averaging neighbouring samples together. This reduces short-term fluctuations and noise in the sampled waveform before further processing stages such as correlation and peak detection.
+
+Larger window sizes produce smoother outputs but also increase latency, since more samples must be collected before a valid result can be generated.
+
+The supported window lengths are restricted to powers of two. This simplifies hardware implementation because division can be performed using arithmetic right-shifts rather than dedicated hardware dividers.
+
+\begin{equation}
+    \frac{1}{L} = 2^{-\log_2(L)}
+\end{equation}
+
+For the supported values of $L$, the required operations are:
+
+\begin{center}
+\begin{tabular}{cc}
+    \toprule
+    Window Length ($L$) & Scaling Operation \\
+    \midrule
+    4                   & Arithmetic right shift by 2 \\
+    8                   & Arithmetic right shift by 3 \\
+    16                  & Arithmetic right shift by 4 \\
+    \bottomrule
+\end{tabular}
+\end{center}
+
+A practical issue associated with moving-average filters is the boundary condition that occurs during startup. The first $L-1$ samples do not yet provide a complete averaging window, meaning the filter output would otherwise be based on incomplete data. Several possible solutions exist, including zero-padding, repeating samples, partial averaging, or delaying output until the window is full.
+
+In this project, the selected approach is a dedicated \texttt{WARMUP} phase in which the AVG-ASP buffers incoming samples but does not emit filtered output packets until a complete window of valid samples has been accumulated. This behaviour simplifies datapath control and ensures that all emitted outputs correspond to mathematically correct moving-average results.
+
+\subsection{Direct Digital Synthesis}
+
+The ADC-ASP generates sampled waveform data using a Direct Digital Synthesis (DDS) architecture. DDS is a digital waveform generation technique that produces periodic signals using a phase accumulator and a waveform look-up table (LUT).
+
+The implemented DDS uses a 16-bit phase accumulator. On every sample tick, the accumulator is incremented by a configurable Frequency Tuning Word (FTW). The most significant bits of the accumulator are then used as the address into a sine-wave LUT stored in ROM. The LUT contains one period of a sampled sine wave, allowing the ADC-ASP to continuously generate digital waveform samples.
+
+The output frequency is determined by:
+
+\begin{equation}
+f_{out} = \frac{FTW \cdot F_s}{2^{phase\_bits}}
+\label{eq:dds_frequency}
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $FTW$ is the frequency tuning word,
+    \item $F_s$ is the sample rate,
+    \item $phase\_bits = 16$ is the width of the phase accumulator.
+\end{itemize}
+
+This approach allows the output frequency to be changed entirely through configuration packets without requiring hardware modification or resynthesis.
+
+DDS is well-suited to this project because the frequency-measurement pipeline must be tested using different simulated grid frequencies. By changing the FTW value, the ADC-ASP can emulate nominal and disturbed power-system conditions such as 49~Hz, 50~Hz, and 51~Hz operation entirely through packet-based reconfiguration.
+
+\section{ADC-ASP Design}
+\label{sec:adc_asp_design}
+
+\subsection{Role and Interface}
+
+The ADC-ASP emulates a sampled power-system signal source. It does not interface with a physical analogue-to-digital converter; instead, it generates digital sine-wave samples internally using a ROM-based waveform generator. This allows the downstream processing pipeline to be verified without requiring external analogue hardware.
+
+The implemented VHDL entity is designed as a drop-in node for the TDMA-MIN NoC generate loop. For this reason, the entity does not include an explicit reset input or a \texttt{NODE\_ID} generic. The internal state is initialised via signal declarations.
+
+The ADC-ASP supports two independent output channels. Each channel has its own configuration registers, phase accumulator, sample-rate counter, enable bit, destination field, and FTW. This allows two independently configured sine-wave streams to be generated from a single ASP node.
+
+\subsection{Overall Structure}
+
+Incoming configuration packets are decoded by checking the packet type field. A valid Conf-ADC packet updates the selected channel configuration. Once enabled, each channel generates sample ticks according to its configured sample-rate divider. On each sample tick, the corresponding phase accumulator is incremented by the configured FTW, the upper phase bits are used to address the sine ROM, and the resulting sample is packed into a Data-Audio packet.
+
+\subsection{Datapath}
+
+The datapath of each ADC channel is based on Direct Digital Synthesis. Figure~\ref{fig:adc_asp_datapath} shows the datapath for one channel.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\linewidth]{adc_asp_datapath.png}
+    \caption{DDS datapath for one ADC-ASP channel.}
+    \label{fig:adc_asp_datapath}
+\end{figure}
+
+The ADC-ASP generates waveform samples using a Direct Digital Synthesis (DDS) architecture. Each channel contains a 16-bit phase accumulator that is incremented by a configurable Frequency Tuning Word (FTW) on every sample tick. The upper 10 bits of the accumulator are used to address a sine-wave ROM containing one period of a sampled sine wave.
+
+The ROM stores signed 16-bit sample values and is generated internally during elaboration using \texttt{ieee.math\_real}, removing the need for an external memory initialisation file.
+
+The output frequency is determined by:
+
+\begin{equation}
+f_{out} = \frac{FTW \cdot F_s}{2^{16}}
+\end{equation}
+
+where $F_s$ is the configured sample rate.
+
+The sample rate is selected through the \texttt{SR} configuration field, which controls an internal clock-divider table. The current implementation supports placeholder sample rates of 8~kHz, 16~kHz, 32~kHz, and 48~kHz.
+
+\subsection{Control Unit}
+
+The ADC-ASP does not require a large multicycle finite-state machine. Its control behaviour is implemented using configuration registers, enable bits, and per-channel sample-rate counters. This is sufficient because the ADC-ASP performs a regular streaming operation once configured.
+
+The simplified control behaviour is shown in Figure~\ref{fig:adc_asp_control}.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.6\linewidth]{adc_asp_control.png}
+    \caption{Simplified ADC-ASP control behaviour.}
+    \label{fig:adc_asp_control}
+\end{figure}
+
+When a channel is disabled, it does not emit output packets. When enabled, the channel emits a Data-Audio packet each time its sample-rate counter produces a tick. The packet contains the configured destination, channel number, and generated sample value.
+
+The ADC-ASP can generate samples from both channels. Since the NoC interface allows at most one outgoing packet per clock cycle, an arbitration rule is required. If both channels produce a sample in the same cycle, channel~0 is transmitted first and the channel~1 packet is deferred by one clock cycle. This gives deterministic arbitration while keeping the implementation simple.
+
+Idle cycles drive an all-zero output packet. Since bit~31 is zero in this case, the network interface treats the output as a no-packet-to-send condition. This avoids the need for an additional explicit valid signal in the ASP interface.
+
+\section{AVG-ASP Design}
+\label{sec:avg_asp_design}
+
+\subsection{Role and Interface}
+
+The AVG-ASP implements a moving-average linear filter operating on streaming audio sample packets received through the TDMA-MIN NoC. The filter computes:
+
+\begin{equation}
+Y(i)=\frac{1}{L}\sum_{k=i-L+1}^{i}X(k)
+\end{equation}
+
+where the supported window lengths are:
+
+\begin{equation}
+L \in \{4,8,16\}
+\end{equation}
+
+Since all supported values of $L$ are powers of two, the division operation is implemented using arithmetic right-shift operations rather than hardware division.
+
+No explicit reset input or node identifier is included, allowing the ASP to integrate directly into the TDMA-MIN infrastructure.
+
+The AVG-ASP maintains one shared configuration set containing the selected filter mode and destination node. Internally, each audio channel maintains its own moving-average window, running sum, and sample counter.
+
+The implementation was adapted from the Lab~2 \texttt{DpAsp} design. The original implementation provided a fixed window length of $L=4$, hardcoded destination routing, and limited configurability. The AVG-ASP extends this design through:
+
+\begin{itemize}
+    \item Conf-DP packet decoding,
+    \item programmable window length selection,
+    \item a running-sum datapath implementation,
+    \item dual-channel operation with WARMUP handling.
+\end{itemize}
+
+\subsection{Datapath}
+
+Figure~\ref{fig:avg_datapath} shows the AVG-ASP datapath.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\linewidth]{avg_datapath.png}
+    \caption{AVG-ASP running-sum datapath.}
+    \label{fig:avg_datapath}
+\end{figure}
+
+The AVG-ASP uses a running-sum implementation rather than recalculating the full window sum for every sample. When a new sample arrives, the oldest sample leaving the active window is subtracted from the accumulated sum and the new sample is added:
+
+\begin{equation}
+sum_{new} = sum_{old} + x - leaving
+\end{equation}
+
+This approach requires only one addition and one subtraction per sample, regardless of the selected window length. In contrast, a direct implementation would require an adder tree whose complexity scales with $L$. The running-sum architecture, therefore, provides a significantly more resource-efficient implementation.
+
+The running sum uses a signed 21-bit datapath to provide sufficient headroom for the maximum supported window size and full-scale signed 16-bit samples.
+
+Scaling is performed using arithmetic right shifts:
+
+\begin{center}
+\begin{tabular}{cc}
+    \toprule
+    Window Length ($L$) & Shift Amount \\
+    \midrule
+    4                   & 2 \\
+    8                   & 3 \\
+    16                  & 4 \\
+    \bottomrule
+\end{tabular}
+\end{center}
+
+The internal sample window is implemented as a fixed 16-entry shift register regardless of the selected filter length. Only the first $L$ entries are considered active for filtering purposes. This simplifies the hardware structure by avoiding dynamic memory allocation or variable-sized buffers.
+
+\subsection{Boundary Handling}
+
+During startup, the filter initially contains insufficient samples to form a complete averaging window. Three possible approaches were considered:
+
+\begin{enumerate}
+    \item suppress output generation until the window is full,
+    \item zero-pad incomplete windows,
+    \item compute partial averages using the current number of samples.
+\end{enumerate}
+
+The selected approach is a dedicated \texttt{WARMUP} phase in which incoming samples are buffered, but no output packets are generated until the averaging window is completely filled.
+
+This approach was selected because it guarantees mathematically correct moving-average outputs while avoiding non-power-of-two division operations required by partial averaging. The trade-off is a startup latency of $L-1$ samples before a valid filtered output becomes available.
+
+\subsection{Control Unit}
+
+The AVG-ASP control unit is implemented using a lightweight finite-state machine operating independently for each channel. The control behaviour is shown in Figure~\ref{fig:avg_control}.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\linewidth]{avg_control.png}
+    \caption{AVG-ASP control unit behaviour.}
+    \label{fig:avg_control}
+\end{figure}
+
+In bypass mode, input samples are forwarded directly without filtering. In filtering mode, the ASP first enters the WARMUP state until the averaging window is filled. Once sufficient samples have been received, the ASP transitions to the RUNNING state and begins emitting filtered output packets.
+
+Unlike the ADC-ASP, the AVG-ASP does not require output arbitration because incoming samples are already serialised by the NoC. Any received configuration packet resets the internal filter state and restarts the WARMUP process.
+
+\section{NoC Interface and Packet Protocol}
+\label{sec:noc_protocol}
+
+\subsection{Reused Network Interface}
+
+The TDMA-MIN network interface (\texttt{TdmaMinInterface}) from Lab~2 was reused without modification. The network interface (NI) is responsible for packet buffering, routing, and communication with the TDMA-MIN NoC fabric.
+
+Each NI instance is assigned a fixed identity corresponding to its port index within the NoC. Internally, the NI contains a packet FIFO implemented using the Altera \texttt{scfifo} primitive with a depth of 256 entries.
+
+Communication between ASPs follows several important conventions inherited from the Lab~2 infrastructure:
+
+\begin{itemize}
+    \item Packet transmission is triggered when bit~31 of \texttt{send.data} is asserted.
+    \item Driving all zeros on \texttt{send.data} indicates that no packet is being transmitted.
+    \item Received packets appear on \texttt{recv.data} for one clock cycle.
+    \item Routing is determined entirely by \texttt{send.addr}; the NoC fabric does not inspect packet payload fields.
+\end{itemize}
+
+The ASPs themselves are intentionally unaware of their own network identity. Node addressing is handled entirely by the NI layer. The ASP only requires the destination node identifier in configuration packets to forward outgoing packets to the next processing stage.
+
+Back-pressure handling through FIFO full detection was intentionally omitted. The generated sample rate is significantly lower than the effective NoC service rate, meaning packets are drained much faster than they are produced. Under the intended operating conditions, FIFO overflow is therefore not expected to occur.
+
+\subsection{Packet Format}
+
+All communication between ASP nodes uses 32-bit packets. Bits~31:28 define the packet type. The packet formats used in this project are summarised below.
+
+\subsubsection*{Data-Audio Packet}
+
+The Data-Audio packet is used for streaming audio samples between ASP nodes.
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|}
+    \hline
+    Bits    & 31:28 & 27:24 & 23:17     & 16 \\ \hline
+    Field   & Type  & Dest  & Reserved  & Ch \\ \hline
+\end{tabular}
+
+\vspace{0.3cm}
+
+\begin{tabular}{|c|}
+    \hline
+    15:0 --- Signed 16-bit Sample \\ \hline
+\end{tabular}
+\end{center}
+
+Packet type \texttt{1000} identifies a Data-Audio packet. The destination field identifies the next ASP node in the processing pipeline, while the channel field selects the associated audio stream.
+
+Although routing is performed exclusively through \texttt{send.addr}, the destination value is also mirrored into the packet payload. This allows downstream processing nodes or software components to inspect packet routing information directly without modifying the underlying NoC routing behaviour.
+
+\subsubsection*{Conf-ADC Packet}
+
+The Conf-ADC packet configures the ADC-ASP.
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+    \hline
+    Bits    & 31:28 & 27:24 & 23:20 & 19:18 & 17 & 16 \\ \hline
+    Field   & Type  & Dest  & Next  & SR    & En & Ch\\ \hline
+\end{tabular}
+
+\vspace{0.3cm}
+
+\begin{tabular}{|c|}
+    \hline
+    15:0 \\ \hline
+    FTW \\ \hline
+\end{tabular}
+\end{center}
+
+Packet type \texttt{1010} identifies a Conf-ADC packet. The packet contains the next destination node, sample-rate selection, enable control, channel selection, and DDS Frequency Tuning Word (FTW).
+
+The FTW occupies bits that were marked unused in the baseline project specification. Because Conf-ADC is a packet shared across the team's ASP nodes, this extension was adopted as an agreed team design decision, ensuring that all producers and consumers of Conf-ADC use a consistent packet layout. The extension enables dynamic frequency reconfiguration of the DDS generator entirely through configuration packets, without requiring hardware modification or resynthesis.
+
+\subsubsection*{Conf-DP Packet}
+
+The Conf-DP packet configures the AVG-ASP.
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|}
+    \hline
+    Bits & 31:28 & 27:24 & 23:20 & 19:16 \\ \hline
+    Field & Type & Dest & Next & Mode \\ \hline
+\end{tabular}
+
+\vspace{0.3cm}
+
+\begin{tabular}{|c|}
+    \hline
+    15:0 --- Unused \\ \hline
+\end{tabular}
+\end{center}
+
+Packet type \texttt{1001} identifies a Conf-DP packet. The mode field selects the AVG-ASP operating mode:
+
+\begin{center}
+\begin{tabular}{ccl}
+    \toprule
+    Mode & Function & \\
+    \midrule
+    0000 & Bypass & \\
+    0001 & Moving average & $L=4$ \\
+    0010 & Moving average & $L=8$ \\
+    0011 & Moving average & $L=16$ \\
+    \bottomrule
+\end{tabular}
+\end{center}
+
+Received configuration packets are not checked against a local node identifier by the ASP itself. Since packets are already routed correctly by the NoC and NI infrastructure, the ASP simply processes any configuration packet delivered to its input.
+
+\subsection{Configuration Sequence}
+
+The ASP pipeline must be configured in the correct order to avoid unintended packet transmission through partially configured processing stages.
+
+The expected configuration sequence is:
+
+\begin{enumerate}
+    \item Configure downstream processing nodes first using Conf-DP packets.
+    \item Configure the ADC-ASP using Conf-ADC packets, including destination, sample rate, enable bit, and FTW.
+    \item Enable streaming from the ADC-ASP.
+\end{enumerate}
+
+Once configured, the ADC-ASP continuously generates Data-Audio packets which are processed autonomously by downstream ASPs.
+
+During reconfiguration, the ADC-ASP should first be disabled before new configuration packets are issued. This prevents partially processed or incorrectly routed sample data from propagating through the pipeline.
+
+In the full HMPSoC architecture, packet generation and configuration management are expected to be performed by the ReCOP subsystem. However, the ASP implementations are independent of the packet sender and depend only on the defined packet format and routing behaviour.
+
+\subsection{Open Design Decisions}
+
+Several parameters of the packet protocol and node configuration are deliberately left open at this stage, as they require coordination with the team. They are recorded here so that downstream integration work is aware of them:
+
+\begin{itemize}
+    \item \textbf{Conf-ADC FTW extension}: the reuse of the previously-unused Conf-ADC payload bits as the DDS Frequency Tuning Word. Adopted as a team design decision so that all Conf-ADC producers and consumers share a consistent layout.
+    \item \textbf{Sample-rate (SR) table}: the mapping from the 2-bit \texttt{SR} field to physical sample rates (currently placeholder values of 8/16/32/48~kHz) is provisional and to be confirmed with the teaching staff against the frequency-measurement requirements.
+    \item \textbf{Conf-DP Mode encoding}: the \texttt{Mode} field encoding (\texttt{0000} bypass, \texttt{0001/0010/0011} for $L=4/8/16$) is a tentative team-wide convention so that all data-processing ASPs share one Conf-DP structure.
+    \item \textbf{8-port node-ID map}: the assignment of NoC node identifiers for the full 8-port HMPSoC is deferred to GP-2 and is a team decision; the ASPs are intentionally agnostic to their own node identity.
+\end{itemize}
+
+\section{Summary of Capabilities and Usage}
+\label{sec:capabilities}
+
+\subsection{ADC-ASP Capabilities}
+
+\begin{center}
+\begin{tabular}{|p{4cm}|p{9cm}|}
+    \hline
+    \textbf{Capability}     & \textbf{Detail} \\ \hline
+    Function                & Emulates an ADC by streaming a synthesised power-system signal \\ \hline
+    Waveform generation     & One-period sine LUT implemented as ROM \\ \hline
+    Frequency control       & DDS-based generation using FTW configuration \\ \hline
+    Sample rates            & Four selectable sample-rate modes \\ \hline
+    Channels                & Two independent output channels \\ \hline
+    Enable control          & Per-channel enable and disable \\ \hline
+    Latency                 & One sample period \\ \hline
+    Output                  & Data-Audio packets forwarded to configured destination node \\ \hline
+\end{tabular}
+\end{center}
+
+\subsection{AVG-ASP Capabilities}
+
+\begin{center}
+\begin{tabular}{|p{4cm}|p{9cm}|}
+    \hline
+    \textbf{Capability}     & \textbf{Detail} \\ \hline
+    Function                & Moving-average linear filter \\ \hline
+    Supported window sizes  & $L \in \{4,8,16\}$ \\ \hline
+    Division method         & Arithmetic right shift by $\log_2(L)$ \\ \hline
+    Datapath structure      & Running-sum implementation \\ \hline
+    Bypass mode             & Direct passthrough without filtering \\ \hline
+    Channels                & Two independent channels \\ \hline
+    Boundary handling       & WARMUP phase until window is full \\ \hline
+    Throughput              & One output per input sample after warmup \\ \hline
+    Output                  & Data-Audio packets forwarded to configured destination node \\ \hline
+\end{tabular}
+\end{center}
+
+\subsection{Configuration and Usage}
+
+Both ASPs are configured using 32-bit command packets transmitted over the TDMA-MIN NoC. Configuration packets specify operating parameters such as destination node, operating mode, sample rate, and DDS frequency configuration.
+
+The ASPs are designed to operate compositionally within the processing pipeline. The ADC-ASP output format is identical to the AVG-ASP input and output format, allowing packets to propagate directly between ASP stages without conversion or glue logic. The channel identifier is preserved throughout the pipeline, enabling multiple signal streams to be processed concurrently using a common packet format.
+
+This allows pipelines such as:
+
+\begin{center}
+\texttt{ADC-ASP $\rightarrow$ AVG-ASP $\rightarrow$ COR-ASP $\rightarrow$ PD-ASP $\rightarrow$ Nios II}
+\end{center}
+
+to be constructed entirely through packet-based configuration.
+
+\section{Verification and Results}
+\label{sec:verification}
+
+Verification was performed using a combination of unit-level and system-level simulation testbenches together with FPGA synthesis analysis. Most verification environments were implemented as self-checking testbenches using assertions and independent reference calculations.
+
+\subsection{Verification Strategy}
+
+Table~\ref{tab:verification} summarises the verification structure used in this project.
+
+\begin{table}[ht]
+    \centering
+    \caption{Verification structure used in the project.}
+    \label{tab:verification}
+    \begin{tabular}{|l|p{8cm}|}
+        \hline
+        \textbf{Artifact} & \textbf{Purpose} \\ \hline
+        
+        \texttt{tb\_avg\_asp.vhd} &
+        Verifies moving-average correctness for $L=4,8,16$, bypass mode, WARMUP behaviour, dual-channel operation, and signed arithmetic behaviour. \\ \hline
+        
+        \texttt{tb\_adc\_asp.vhd} &
+        Verifies DDS waveform generation, sample-rate operation, live FTW reconfiguration, and dual-channel behaviour. \\ \hline
+        
+        \texttt{testbed\_adc\_asp.vhd} &
+        Verifies ADC-ASP packet generation and routing through the real TDMA-MIN NoC infrastructure. \\ \hline
+        
+        \texttt{testbed\_pipeline.vhd} &
+        Verifies end-to-end ADC$\rightarrow$AVG pipeline behaviour and moving-average attenuation. \\ \hline
+        
+        Quartus compilation &
+        Measures FPGA resource usage and timing performance. \\ \hline
+    \end{tabular}
+\end{table}
+
+The verification process covered:
+
+\begin{itemize}
+    \item moving-average correctness for all supported window lengths,
+    \item bypass mode operation,
+    \item WARMUP boundary behaviour,
+    \item signed arithmetic correctness for bipolar input data,
+    \item DDS waveform generation,
+    \item live DDS frequency retuning,
+    \item non-default sample-rate operation,
+    \item dual-channel streaming behaviour,
+    \item NoC packet routing and payload correctness.
+\end{itemize}
+
+\subsection{Simulation Results}
+
+Simulation results were collected using both unit-level and system-level testbenches in ModelSim.
+
+To keep simulation run-times tractable, the testbenches instantiate the ADC-ASP with a reduced \texttt{clock\_hz} generic (80~kHz) rather than the 50~MHz board value. This only scales the internal sample-rate divider: the DDS relationship $f_{out}=FTW\cdot F_s/2^{16}$ and the resulting sample rate $F_s$ are unchanged, so the simulated behaviour is bit-identical to the on-board design while requiring roughly three orders of magnitude fewer simulated clock cycles. The simulated clock period itself remains 20~ns (50~MHz).
+
+The \texttt{tb\_avg\_asp} testbench verified:
+
+\begin{itemize}
+    \item moving-average correctness for $L=4,8,16$,
+    \item bypass-mode operation,
+    \item WARMUP behaviour,
+    \item signed arithmetic correctness for bipolar inputs,
+    \item dual-channel operation.
+\end{itemize}
+
+Representative simulation waveforms are shown in Figure~\ref{fig:tb_avg_asp_waveform}. The captured signals show the input samples, filtered outputs, and the WARMUP interval before valid output generation begins.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{tb_avg_asp_waveform.png}
+    \caption{\texttt{tb\_avg\_asp} simulation: input samples, filtered moving-average output, and the WARMUP interval before valid output.}
+    \label{fig:tb_avg_asp_waveform}
+\end{figure}
+
+The \texttt{tb\_adc\_asp} testbench verified:
+
+\begin{itemize}
+    \item DDS waveform generation,
+    \item FTW-based frequency control,
+    \item sample-rate divider operation,
+    \item dual-channel packet generation,
+    \item live FTW reconfiguration.
+\end{itemize}
+
+Representative DDS waveforms are shown in Figure~\ref{fig:tb_adc_waveform}. The waveform capture includes a dynamic FTW update demonstrating runtime frequency reconfiguration.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{tb_adc_waveform.png}
+    \caption{\texttt{tb\_adc\_asp} simulation: generated DDS sine output, including a live FTW update demonstrating runtime frequency reconfiguration.}
+    \label{fig:tb_adc_waveform}
+\end{figure}
+
+System-level verification was performed using \texttt{testbed\_adc\_asp} and \texttt{testbed\_pipeline}, which instantiated the real TDMA-MIN NoC infrastructure together with the ASP implementations.
+
+Figure~\ref{fig:testbed_pipeline_waveform} shows end-to-end packet flow through the ADC$\rightarrow$AVG pipeline. The captured signals verify successful packet routing, filtering operation, and preservation of the channel identifier and destination fields through the pipeline.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{testbed_pipeline.png}
+    \caption{\texttt{testbed\_pipeline} simulation: end-to-end ADC$\rightarrow$AVG flow over the TDMA-MIN NoC, showing pre- and post-filter samples and moving-average attenuation of the sine.}
+    \label{fig:testbed_pipeline_waveform}
+\end{figure}
+
+\section{Resource Usage, Timing, and Trade-Offs}
+\label{sec:resources}
+
+Synthesis and timing analysis were performed in Quartus~18.1 targeting the Cyclone~V device on the DE1-SoC board. Each ASP was synthesised independently by selecting the corresponding top-level entity and compiling the design under the project timing constraints, which specify the 50~MHz board clock (20~ns period).
+
+Tables~\ref{tab:resources} and~\ref{tab:fmax} summarise the measured FPGA resource usage and timing performance.
+
+\begin{table}[ht]
+\centering
+    \caption{FPGA resource usage summary.}
+    \label{tab:resources}
+    \begin{tabular}{|c|c|c|c|c|}
+        \hline
+        \textbf{ASP}    & \textbf{ALMs} & \textbf{Registers} & \textbf{M10K} & \textbf{DSP} \\ \hline
+        ADC-ASP         & 536           & 214                & 0             & 0            \\ \hline
+        AVG-ASP         & 244           & 600                & 0             & 0            \\ \hline
+    \end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+    \caption{Timing analysis summary.}
+    \label{tab:fmax}
+    \begin{tabular}{|c|c|c|}
+    \hline
+    \textbf{ASP}    & \textbf{Fmax} & \textbf{Margin vs 50~MHz} \\ \hline
+    ADC-ASP         & 117.48~MHz    & $\sim$2.3$\times$         \\ \hline
+    AVG-ASP         & 122.67~MHz    & $\sim$2.5$\times$         \\ \hline
+    \end{tabular}
+\end{table}
+
+The synthesis results show the ADC-ASP is logic-dominated, owing to the dual DDS phase accumulators, the per-channel sample-rate counters, and the output arbitration logic. Notably, the sine-wave ROM did not infer as a dedicated block-memory (M10K) primitive; it was instead synthesised into logic and registers, which is consistent with the reported M10K usage of zero and with the relatively high logic and register counts.
+
+The AVG-ASP is register-dominated because the moving-average windows are implemented as shift registers. Neither ASP uses any DSP blocks: the moving-average scaling is a power-of-two arithmetic shift and the DDS generation uses a look-up table, so no multiplier or general divider is instantiated. The zero values reported for M10K and DSP are therefore measured synthesis results, not omitted data, and the absence of DSP usage directly supports the design's no-divider, shift-based arithmetic approach.
+
+Both ASPs close timing comfortably against the 50~MHz board clock, with roughly 2.3--2.5$\times$ margin (Table~\ref{tab:fmax}), confirming that neither datapath is timing-critical on the target device.
+
+Several architectural trade-offs were considered during the design process.
+
+The AVG-ASP uses a running-sum architecture rather than recomputing the full moving-average sum for every sample. This reduces the datapath cost to one addition and one subtraction per sample regardless of the selected window length.
+
+The averaging window was implemented using shift-register storage rather than RAM-based circular buffers. For the relatively small maximum window size of 16 samples, this approach simplifies timing and control logic while using only modest register resources.
+
+For the ADC-ASP, the selected LUT depth represents a trade-off between waveform quality and memory usage. Increasing the LUT size improves waveform precision but increases ROM resource consumption.
+
+The DDS frequency resolution is determined by the phase accumulator width. Increasing the accumulator width would improve frequency precision at the cost of additional logic resources.
+
+\section{Hardware versus Software Implementation}
+\label{sec:performance_discussion}
+
+A C reference model was implemented for the AVG-ASP to describe the equivalent software behaviour. The model uses the same running-sum algorithm as the hardware design, including WARMUP behaviour, bypass mode, and power-of-two division using arithmetic right shifts. This provides a direct software baseline for comparing the RTL implementation against an equivalent sequential implementation. The core of the model is shown in Listing~\ref{lst:avg_ref}.
+
+\begin{lstlisting}[caption={Core of the AVG-ASP C reference model (\texttt{ip/sw/avg\_ref.c}).}, label={lst:avg_ref}]
+typedef struct {
+    int16_t window[MAX_L];
+    int32_t sum;
+    int count;
+    int index;
+    int L;
+    int shift;
+    bool bypass;
+} AvgRef;
+
+// Returns true when output is valid; false during WARMUP.
+bool avg_process_sample(AvgRef *avg, int16_t x, int16_t *y) {
+    if (avg->bypass) {
+        *y = x;
+        return true;
+    }
+
+    int16_t old = avg->window[avg->index];
+
+    avg->window[avg->index] = x;
+    avg->index = (avg->index + 1) % avg->L;
+
+    if (avg->count < avg->L) {            // WARMUP
+        avg->sum += x;
+        avg->count++;
+        if (avg->count < avg->L) {
+            return false;
+        }
+        *y = (int16_t)(avg->sum >> avg->shift);
+        return true;
+    }
+
+    avg->sum += x - old;                  // running sum
+    *y = (int16_t)(avg->sum >> avg->shift);
+    return true;
+}
+\end{lstlisting}
+
+The moving-average filter can be implemented straightforwardly in software using a running-sum algorithm. However, a software implementation on a general-purpose processor executes sequentially and consumes processor cycles for every received sample.
+
+In contrast, the AVG-ASP implements the same algorithm directly in hardware using dedicated registers and arithmetic datapaths. Once configured, the ASP processes streaming input data autonomously without software intervention.
+
+The hardware implementation provides deterministic throughput of one result per input sample after the WARMUP phase. The running-sum datapath also avoids repeated summation of the entire averaging window, reducing the arithmetic cost to one addition and one subtraction per sample independent of the selected window length.
+
+Compared with a software implementation, the hardware ASP reduces processor workload and enables continuous real-time filtering while allowing the Nios~II processor to perform higher-level application tasks.
+
+The ADC-ASP waveform generator could also be implemented in software by periodically calculating or retrieving waveform samples and transmitting them through the NoC. However, implementing the DDS generator in hardware allows waveform generation to proceed continuously and independently of processor execution.
+
+The hardware DDS implementation also enables runtime frequency reconfiguration through packet-based FTW updates without interrupting waveform generation or requiring software-managed timing loops.
+
+\section{Parallelisation Opportunities}
+\label{sec:parallelisation}
+
+The implemented ASPs already exploit a moderate degree of hardware parallelism. The ADC-ASP contains two independent DDS channels operating concurrently, while the AVG-ASP maintains independent filtering state for each audio channel.
+
+In the current system, overall throughput is limited primarily by the TDMA-MIN communication bandwidth rather than computational complexity within the ASP datapaths. The NoC permits only one packet transmission per slot, meaning communication becomes the dominant bottleneck before arithmetic throughput limits are reached.
+
+The AVG-ASP running-sum implementation already achieves constant-cost filtering independent of window length. For substantially larger filters or more complex FIR implementations, additional pipelining or parallel adder structures could be introduced to improve throughput.
+
+Future scalability improvements could also include FIFO-buffered packet transmission or wider NoC datapaths to support higher concurrent sample rates.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+This Individual Project delivered two composable, NoC-connected hardware accelerators for the power-system frequency-measurement pipeline: an ADC-ASP that emulates a sampled analogue front-end using Direct Digital Synthesis, and an AVG-ASP that implements a programmable moving-average filter using a resource-efficient running-sum datapath. Both modules integrate directly into the reused Lab-2 TDMA-MIN NoC as drop-in nodes, requiring no reset or node-identity ports, and communicate through a shared 32-bit packet protocol.
+
+The DDS architecture allows the emulated grid frequency to be retuned at runtime through a single configuration packet, and the moving-average filter supports window lengths of 4, 8 and 16 using only power-of-two arithmetic shifts, with no hardware divider or multiplier. The running-sum architecture keeps the filtering cost at one addition and one subtraction per sample regardless of window length, and a dedicated WARMUP phase guarantees that every emitted output is a mathematically complete average.
+
+Functional correctness was established through self-checking unit testbenches that compare the implementation against independent reference calculations, and through system-level testbeds that exercise the modules over the real TDMA-MIN NoC, including end-to-end pipeline behaviour and packet-routing correctness. Synthesis confirms both ASPs are small and fast, using no DSP blocks and closing timing with roughly 2.3--2.5$\times$ margin against the 50~MHz board clock.
+
+The principal remaining work is the completion of the open team-level design decisions described in Section~\ref{sec:noc_protocol} (sample-rate table, Mode encoding, and the 8-port node-ID map), and integration of the two ASPs with the remaining pipeline stages and the ReCOP subsystem in GP-2. The current results demonstrate that hardware-accelerated DSP kernels can sustain deterministic, real-time throughput far in excess of the system's communication bandwidth, validating the ASP-based approach for the critical part of the HMPSoC.
+
+\section{Acknowledgements}
+
+The design includes files supplied by the University of Auckland and Zoran Salcic in Lab-2.
+
+\end{document}

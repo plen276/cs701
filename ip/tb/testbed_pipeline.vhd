@@ -5,54 +5,40 @@ USE ieee.std_logic_1164.ALL;
 LIBRARY work;
 USE work.TdmaMinTypes.ALL;
 
--- ============================================================
--- PIPELINE TESTBED: ADC-ASP -> AVG-ASP over the real TDMA-MIN
--- NoC.  This is the BRIEF's "realistic external requirements"
--- end-to-end environment.
---
---   port 0  adc_asp        - DDS signal source
+-- End-to-end pipeline testbed: ADC-ASP -> AVG-ASP over the real
+-- TDMA-MIN NoC.
+--   port 0  adc_asp       - DDS signal source
 --   port 1  configurator  - Conf-DP then Conf-ADC (realistic
 --                           order: configure downstream first,
 --                           start the source last; ReCOP does
 --                           this in GP-2)
---   port 2  avg_asp        - moving-average filter
+--   port 2  avg_asp       - moving-average filter
 --   port 3  sink          - receives filtered samples
---
--- The source is a sine, so AVG output has no crisp expected
--- value (exact math is checked by TestAvgAsp). Here the check
--- is the physical property of a moving average: it attenuates
--- a non-DC sine, so peak|post| <= peak|pre|.  Both pre (ADC->
--- AVG) and post (AVG->sink) streams are snooped for the report
--- waveform.
---
--- ModelSim needs altera_mf + the 'ip' library - run notes at
--- the bottom of this file.
--- ============================================================
+-- The source is a sine (exact maths is checked by tb_avg_asp); here
+-- the check is the physical property that a moving average attenuates
+-- a non-DC sine, so peak|post| <= peak|pre|.
 
 ENTITY testbed_pipeline IS
 END ENTITY;
 
 ARCHITECTURE sim OF testbed_pipeline IS
 
-	CONSTANT PORT
-	S                  : POSITIVE  := 4;
-	CONSTANT CLK_HALF  : TIME      := 10 ns;
+	CONSTANT NUM_PORTS      : POSITIVE  := 4;
+	CONSTANT CLK_HALF       : TIME      := 10 ns;
 
-	CONSTANT NODE_ADC  : NATURAL   := 0;
-	CONSTANT NODE_CFG  : NATURAL   := 1;
-	CONSTANT NODE_AVG  : NATURAL   := 2;
-	CONSTANT NODE_SINK : NATURAL   := 3;
+	CONSTANT NODE_ADC       : NATURAL   := 0;
+	CONSTANT NODE_CFG       : NATURAL   := 1;
+	CONSTANT NODE_AVG       : NATURAL   := 2;
+	CONSTANT NODE_SINK      : NATURAL   := 3;
 
-	SIGNAL clock       : STD_LOGIC := '1';
-	SIGNAL stop        : BOOLEAN   := false;
+	SIGNAL clock            : STD_LOGIC := '1';
+	SIGNAL stop             : BOOLEAN   := false;
 
-	SIGNAL send_port   : tdma_min_ports(0 TO PORT
-	S - 1);
-	SIGNAL recv_port : tdma_min_ports(0 TO PORT
-	S - 1);
+	SIGNAL send_port        : tdma_min_ports(0 TO NUM_PORTS - 1);
+	SIGNAL recv_port        : tdma_min_ports(0 TO NUM_PORTS - 1);
 
 	-- Snoop points
-	SIGNAL pre_valid        : STD_LOGIC; -- ADC -> AVG (AVG's recv)
+	SIGNAL pre_valid        : STD_LOGIC; -- ADC -> AVG
 	SIGNAL pre_sample       : signed(15 DOWNTO 0);
 	SIGNAL post_valid       : STD_LOGIC; -- AVG -> sink
 	SIGNAL post_sample      : signed(15 DOWNTO 0);
@@ -84,39 +70,38 @@ BEGIN
 	clock <= NOT clock AFTER CLK_HALF WHEN NOT stop ELSE
 		'0';
 
-	---------------------------------------------------------------------------
-	-- NoC
-	---------------------------------------------------------------------------
 	noc : ENTITY work.TdmaMin
-		GENERIC MAP(
-			ports => PORT
-			S)
+		GENERIC MAP(ports => NUM_PORTS)
 		PORT MAP
-			(clock => clock, sends => send_port, recvs => recv_port);
-	(clock => clock, sends => send_port, recvs => recv_port);
+		(
+			clock => clock,
+			sends => send_port,
+			recvs => recv_port
+		);
 
-	---------------------------------------------------------------------------
 	-- ADC-ASP (small clock_hz so SR_DIV is sim-friendly)
-	---------------------------------------------------------------------------
 	adc : ENTITY work.adc_asp
 		GENERIC MAP(clock_hz => 80_000, phase_bits => 16, lut_addr_bits => 10)
 		PORT
-		MAP (clock => clock,
-		send => send_port(NODE_ADC), recv => recv_port(NODE_ADC));
+		MAP
+		(
+		clock => clock,
+		send  => send_port(NODE_ADC),
+		recv  => recv_port(NODE_ADC)
+		);
 
-	---------------------------------------------------------------------------
-	-- AVG-ASP
-	---------------------------------------------------------------------------
 	avg : ENTITY work.avg_asp
 		PORT
-		MAP (clock => clock,
-		send => send_port(NODE_AVG), recv => recv_port(NODE_AVG));
+		MAP
+		(
+		clock => clock,
+		send  => send_port(NODE_AVG),
+		recv  => recv_port(NODE_AVG)
+		);
 
-	---------------------------------------------------------------------------
-	-- Configurator (port 1): Conf-DP first (configure AVG: forward to sink,
-	-- L=8), then Conf-ADC (start the source: forward to AVG, ch0, FTW=4096
-	-- -> ~500 Hz at Fs=8 kHz, where an L=8 moving average attenuates ~0.64).
-	---------------------------------------------------------------------------
+	-- Configure downstream first (AVG: forward to sink, L=8), then
+	-- start the source (ADC: forward to AVG, ch0, FTW=4096 ~= 500 Hz at
+	-- Fs=8 kHz, where an L=8 moving average attenuates ~0.64).
 	configurator : PROCESS
 		PROCEDURE send_pkt (dst : NATURAL; pkt : tdma_min_data) IS
 		BEGIN
@@ -166,15 +151,11 @@ BEGIN
 		WAIT;
 	END PROCESS;
 
-	---------------------------------------------------------------------------
 	-- Sink (port 3): receive-only
-	---------------------------------------------------------------------------
 	send_port(NODE_SINK).addr <= (OTHERS => '0');
 	send_port(NODE_SINK).data <= (OTHERS => '0');
 
-	---------------------------------------------------------------------------
 	-- Snoop + peak tracking
-	---------------------------------------------------------------------------
 	pre_valid                 <= '1' WHEN recv_port(NODE_AVG).data(31 DOWNTO 28) = "1000"
 		ELSE
 		'0';
@@ -219,33 +200,3 @@ BEGIN
 	END PROCESS;
 
 END ARCHITECTURE;
-
--- ============================================================
--- ModelSim run notes (same heavy path as TestbedAdc)
--- ============================================================
---   vlib altera_mf
---   vmap altera_mf altera_mf
---   vcom -work altera_mf "$QUARTUS_ROOTDIR/eda/sim_lib/altera_mf_components.vhd"
---   vcom -work altera_mf "$QUARTUS_ROOTDIR/eda/sim_lib/altera_mf.vhd"
---
---   vlib ip
---   vcom -work ip ip/ip/TdmaMinFifo/TdmaMinFifo.vhd
---
---   vlib work
---   vcom ip/src/TdmaMin/TdmaMinTypes.vhd
---   vcom ip/src/TdmaMin/TdmaMinSlots.vhd
---   vcom ip/src/TdmaMin/TdmaMinSwitch.vhd
---   vcom ip/src/TdmaMin/TdmaMinStage.vhd
---   vcom ip/src/TdmaMin/TdmaMinFabric.vhd
---   vcom ip/src/TdmaMin/TdmaMinInterface.vhd
---   vcom ip/src/TdmaMin/TdmaMin.vhd
---   vcom ip/src/adc_asp.vhd
---   vcom ip/src/avg_asp.vhd
---   vcom ip/tb/testbed_pipeline.vhd
---
---   vsim -L altera_mf -L ip work.testbed_pipeline
---   add wave -radix decimal sim:/testbed_pipeline/pre_sample \
---                           sim:/testbed_pipeline/post_sample
---   add wave sim:/testbed_pipeline/pre_valid sim:/testbed_pipeline/post_valid \
---            sim:/testbed_pipeline/peak_pre sim:/testbed_pipeline/peak_post
---   run -all

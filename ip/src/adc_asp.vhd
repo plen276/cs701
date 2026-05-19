@@ -1,44 +1,19 @@
 LIBRARY ieee;
 USE ieee.numeric_std.ALL;
 USE ieee.std_logic_1164.ALL;
-USE ieee.math_real.ALL; -- used ONLY to build the sine LUT constant
+USE ieee.math_real.ALL; -- elaboration-time sine LUT only
 
 LIBRARY work;
 USE work.TdmaMinTypes.ALL;
 
--- ============================================================
--- ADC-ASP  -  DDS signal source for the IP frequency-measurement
--- pipeline.
+-- ADC-ASP: emulates an ADC by synthesising a sine via DDS (phase
+-- accumulator + sine ROM); the output frequency is set at run time by
+-- the FTW field of the Conf-ADC packet. Dual-channel. Drop-in NoC node
+-- (no reset / NODE_ID; state initialised at declaration; an all-zero
+-- output means "nothing to send", since bit 31 is the NI send trigger).
 --
--- Unlike Lab 2's adc_asp (a bridge from the physical audio codec),
--- this ASP *emulates* an ADC: it synthesises a power-system signal
--- from an internal sine LUT using a DDS phase accumulator, so the
--- test frequency is tunable live by packet.
---
--- Drop-in compatible with the Lab 2 TDMA-MIN NoC (spec.md #6, #7):
---   * no reset port, no NODE_ID generic - the TdmaMin generate
---     loop only wires clock/slot/push/pull/send/recv
---   * all state is initialised at declaration (Lab 2 convention)
---   * idle cycles drive all-zeros: bit 31 = '0' makes the NI treat
---     it as "nothing to send" (TdmaMinInterface line 57)
---
--- Packet formats (routing dest travels on send.addr, NoC fabric,
--- NOT in the payload - Lab 2 convention, spec.md #4/#5):
---
---   Conf-ADC  (decoded, type "1010"):
---     31-28 type | 27-24 unused(0) | 23-20 Next | 19-18 SR
---       | 17 En | 16 Ch | 15-0 FTW
---     NOTE: bits 15-0 are "Unused" in the project-specs table;
---     this ASP repurposes them as the 16-bit DDS Frequency Tuning
---     Word (spec.md decision #8). Conf-ADC is a TEAM-SHARED packet
---     - this extension must be agreed team-wide (spec.md OPEN #1/#2).
---
---   Data-Audio (emitted, type "1000"):
---     31-28 "1000" | 27-24 Dest | 23-17 zeros | 16 Ch | 15-0 sample
---     Dest mirrors the forward node (Next) - the Lab 2 NoC routes on
---     send.addr, but Dest is also stamped in 27-24 so downstream
---     ASPs / ReCOP can read it from the payload (packet_format.md).
--- ============================================================
+-- Conf-ADC   "1010": 27-24 Dest | 23-20 Next | 19-18 SR | 17 En | 16 Ch | 15-0 FTW
+-- Data-Audio "1000": 27-24 Dest | 23-17 0 | 16 Ch | 15-0 signed sample
 
 ENTITY adc_asp IS
 	GENERIC (
@@ -56,15 +31,12 @@ END ENTITY;
 
 ARCHITECTURE rtl OF adc_asp IS
 
-	---------------------------------------------------------------------------
 	-- Packet protocol constants (named, single source of truth)
-	---------------------------------------------------------------------------
 	CONSTANT TYPE_CONF_ADC         : STD_LOGIC_VECTOR(3 DOWNTO 0) := "1010";
 	CONSTANT TYPE_DATA_AUDIO       : STD_LOGIC_VECTOR(3 DOWNTO 0) := "1000";
 
 	-- Build a Data-Audio payload:
-	--   type(31:28) | Dest(27:24) | Reserved 0s(23:17) | Ch(16) | sample(15:0)
-	-- Defined once so the bit layout is not an opaque string literal.
+	-- type(31:28) | Dest(27:24) | Reserved 0s(23:17) | Ch(16) | sample(15:0)
 	FUNCTION make_data_audio (dest : STD_LOGIC_VECTOR(3 DOWNTO 0);
 		ch                             : STD_LOGIC;
 		sample                         : signed(15 DOWNTO 0))
@@ -81,11 +53,8 @@ ARCHITECTURE rtl OF adc_asp IS
 		RETURN "0000" & dest;
 	END FUNCTION;
 
-	---------------------------------------------------------------------------
-	-- Sine ROM: one full period, signed 16-bit, full-scale +/-32767.
-	-- math_real is evaluated at elaboration to fill the constant; Quartus
-	-- synthesises this as a ROM (no .mif needed).
-	---------------------------------------------------------------------------
+	-- One period of a signed-16 sine, built at elaboration (no .mif required);
+	-- the tools maps it to constant logic
 	CONSTANT lut_depth : POSITIVE := 2 ** lut_addr_bits;
 	TYPE lut_t IS ARRAY(0 TO lut_depth - 1) OF signed(15 DOWNTO 0);
 
@@ -102,17 +71,10 @@ ARCHITECTURE rtl OF adc_asp IS
 
 	CONSTANT SINE_LUT : lut_t := build_sine;
 
-	---------------------------------------------------------------------------
-	-- Sample-rate divisor table, indexed by the 2-bit Conf-ADC SR field.
-	-- OPEN DECISION #5 (spec.md): these Fs values are placeholders. Higher Fs
-	-- gives more samples per 50 Hz period for the downstream filter; calibrate
-	-- with the team / TA.
-	--
-	-- INVARIANT (see TestAspAdc D4 assertion): every entry must be >= 2.
-	-- A divisor of 1 makes a channel emit every clock; the ch0-priority
-	-- arbiter would then perpetually defer ch1 (ch1 starvation). All real
-	-- (50 MHz) and tested configs satisfy this with large margin.
-	---------------------------------------------------------------------------
+	-- SR field -> clock divisor (placeholder rates). Higher Fs gives more
+	-- samples per 50 Hz period for the downstream filter.
+	-- Every entry must be >= 2, otherwise a divisor of 1 makes a channel
+	-- emit every clock and the ch0-priority arbiter would starve ch1.
 	TYPE div_table_t IS ARRAY(0 TO 3) OF POSITIVE;
 	CONSTANT SR_DIV : div_table_t := (
 		0 => clock_hz / 8000,  -- SR=00 ->  8 kHz
@@ -121,9 +83,7 @@ ARCHITECTURE rtl OF adc_asp IS
 		3 => clock_hz / 48000  -- SR=11 -> 48 kHz
 	);
 
-	---------------------------------------------------------------------------
 	-- Per-channel configuration latched from Conf-ADC packets.
-	---------------------------------------------------------------------------
 	SIGNAL dest_0, dest_1     : STD_LOGIC_VECTOR(3 DOWNTO 0)      := "0010";
 	SIGNAL rate_0, rate_1     : STD_LOGIC_VECTOR(1 DOWNTO 0)      := "00";
 	SIGNAL enable_0, enable_1 : STD_LOGIC                         := '0';
@@ -131,12 +91,7 @@ ARCHITECTURE rtl OF adc_asp IS
 
 BEGIN
 
-	---------------------------------------------------------------------------
-	-- Conf-ADC decode. One configuration row per channel (selected by bit 16).
-	-- A delivered packet is visible on recv.data for exactly one clock
-	-- (combinational NoC fabric + single recv register), so a clocked
-	-- decode latches each Conf-ADC exactly once.
-	---------------------------------------------------------------------------
+	-- Conf-ADC decode; bit 16 selects the channel row.
 	decode : PROCESS (clock)
 	BEGIN
 		IF rising_edge(clock) THEN
@@ -156,15 +111,10 @@ BEGIN
 		END IF;
 	END PROCESS;
 
-	---------------------------------------------------------------------------
-	-- Signal generation + packet emission.
-	-- Each channel has its own sample-rate counter and DDS phase accumulator:
-	--   phase += FTW  ->  index = top lut_addr_bits of phase
-	--   f_out = FTW * Fs / 2**phase_bits   (tunable independently of Fs)
-	-- At most one packet is emitted per clock; if both channels are due in the
-	-- same cycle, ch0 goes first and ch1 the next cycle (its sample is latched
-	-- so it stays correct). Idle cycles send all-zeros.
-	---------------------------------------------------------------------------
+	-- Per-channel DDS: every SR_DIV clocks, phase += FTW and the top
+	-- lut_addr_bits index the ROM. At most one packet per clock; if both
+	-- channels are due, ch0 emits and ch1 is deferred one clock (its
+	-- sample is latched so it stays correct).
 	generate_and_emit : PROCESS (clock)
 		VARIABLE cnt_0, cnt_1     : NATURAL                           := 0;
 		VARIABLE phase_0, phase_1 : unsigned(phase_bits - 1 DOWNTO 0) := (OTHERS => '0');
@@ -200,7 +150,7 @@ BEGIN
 				END IF;
 			END IF;
 
-			-- Emit one packet, ch0 priority
+			-- ch0 priority
 			IF pend_0 THEN
 				send.addr <= route_addr(dest_0);
 				send.data <= make_data_audio(dest_0, '0', smp_0);

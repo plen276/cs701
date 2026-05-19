@@ -6,32 +6,23 @@ USE ieee.math_real.ALL; -- TB-side sine reference (mirrors DUT LUT)
 LIBRARY work;
 USE work.TdmaMinTypes.ALL;
 
--- ============================================================
--- Self-contained, self-checking testbench for adc_asp (Lab 2
--- TestTdmaMinInterface style: no ports, own clock, drives recv,
--- snoops send).
---
--- Simulation-speed note: the real system runs at 50 MHz where one
--- 50 Hz period is ~1e6 cycles. The DUT is instantiated with a SMALL
--- clock_hz generic so SR_DIV shrinks; the DDS relationship
--- f_out = FTW * Fs / 2**phase_bits is unchanged, so behaviour is
--- identical with far fewer cycles to simulate.
---
--- With clock_hz = 80_000:  SR=00 -> Fs=8 kHz (SR_DIV=10 clocks),
---                          SR=01 -> Fs=16 kHz (SR_DIV=5 clocks).
+-- Self-checking unit testbench for adc_asp (no NoC; drives recv,
+-- snoops send). The DUT is given a small clock_hz generic so the
+-- sample-rate divider is short: f_out = FTW*Fs/2^16 and Fs are
+-- unchanged, so behaviour is identical with far fewer simulated
+-- cycles. clock_hz=80_000 -> SR=00: Fs=8 kHz (SR_DIV=10), SR=01:
+-- Fs=16 kHz (SR_DIV=5).
 --
 -- Coverage:
---   V2  CH0 self-check: every emitted sample == an INDEPENDENT
---       TB sine reference at the expected DDS phase, AND the packet
---       spacing == SR_DIV (single channel, exact period).
---   V3  CH1 at a DIFFERENT sample rate (SR=01) - same self-check.
---   V4  both channels due the SAME cycle (identical SR): assert no
---       ch1 starvation (bounded packet gap) and well-formed packets.
---   D4  SR_DIV >= 2 invariant asserted from the same Fs source the
---       period check uses (a divisor of 1 would starve ch1).
---   Smoke: original live FTW retune demo (frequency change by
---       packet) - kept for the report waveform.
--- ============================================================
+--   V2    ch0 self-check: every emitted sample equals an independent
+--         sine reference at the expected DDS phase, and packet spacing
+--         equals SR_DIV (single channel, exact period).
+--   V3    ch1 at a different sample rate (SR=01) - same self-check.
+--   V4    both channels active at the same rate: no ch1 starvation
+--         (bounded packet gap) and well-formed packets.
+--   D4    the SR_DIV >= 2 invariant (a divisor of 1 would starve ch1).
+--   Smoke live FTW retune (frequency change by packet) for the
+--         report waveform.
 
 ENTITY tb_adc_asp IS
 END ENTITY;
@@ -48,14 +39,14 @@ ARCHITECTURE sim OF tb_adc_asp IS
 	data => (OTHERS => '0'));
 	SIGNAL stop       : BOOLEAN := false;
 
-	-- Decoded view of the emitted packet (waveform readability)
+	-- Decoded view of the emitted packet (waveform readability).
 	SIGNAL tx_valid   : STD_LOGIC;
 	SIGNAL tx_type    : STD_LOGIC_VECTOR(3 DOWNTO 0);
 	SIGNAL tx_ch      : STD_LOGIC;
 	SIGNAL tx_sample  : signed(15 DOWNTO 0);
 	SIGNAL tx_dest    : STD_LOGIC_VECTOR(3 DOWNTO 0);
 
-	-- Self-check control, driven by the stimulus process
+	-- Self-check control, driven by the stimulus process.
 	SIGNAL seg_id     : INTEGER                      := 0;     -- bump => monitor resyncs
 	SIGNAL chk_en0    : BOOLEAN                      := false; -- monitor ch0 (gap/well-formed)
 	SIGNAL chk_en1    : BOOLEAN                      := false;
@@ -77,7 +68,7 @@ ARCHITECTURE sim OF tb_adc_asp IS
 		RETURN TB_CLK_HZ / FS_TBL(sr);
 	END FUNCTION;
 
-	-- INDEPENDENT sine reference: same formula as adc_asp.build_sine,
+	-- Independent sine reference: same formula as adc_asp.build_sine,
 	-- indexed by the top 10 bits of the 16-bit phase.
 	FUNCTION sine_ref (ph : unsigned(15 DOWNTO 0)) RETURN signed IS
 		VARIABLE idx          : INTEGER;
@@ -102,15 +93,10 @@ ARCHITECTURE sim OF tb_adc_asp IS
 
 BEGIN
 
-	---------------------------------------------------------------------------
-	-- Clock
-	---------------------------------------------------------------------------
 	clock <= NOT clock AFTER CLK_HALF WHEN NOT stop ELSE
 		'0';
 
-	---------------------------------------------------------------------------
 	-- DUT  (small clock_hz so the sample-rate divider is sim-friendly)
-	---------------------------------------------------------------------------
 	dut : ENTITY work.adc_asp
 		GENERIC MAP(
 			clock_hz      => TB_CLK_HZ,
@@ -124,16 +110,14 @@ BEGIN
 			recv  => recv
 		);
 
-	---------------------------------------------------------------------------
 	-- Decode emitted packet for the waveform / assertions
-	---------------------------------------------------------------------------
 	tx_valid  <= send.data(31);
 	tx_type   <= send.data(31 DOWNTO 28);
 	tx_ch     <= send.data(16);
 	tx_sample <= signed(send.data(15 DOWNTO 0));
 	tx_dest   <= send.addr(3 DOWNTO 0);
 
-	-- Global invariant: any emitted (valid) packet must be Data-Audio "1000"
+	-- Any emitted packet must be Data-Audio.
 	check : PROCESS (clock)
 	BEGIN
 		IF rising_edge(clock) THEN
@@ -145,13 +129,10 @@ BEGIN
 		END IF;
 	END PROCESS;
 
-	---------------------------------------------------------------------------
-	-- Self-checking DDS monitor (V2/V3/V4 + D4).
-	-- A delivered packet is on send for exactly one clock, so each is
-	-- counted once. Expected phase per channel advances once per observed
-	-- packet for that channel (DUT phase starts at 0 on first enable, so
-	-- the first emitted sample uses phase = FTW - mirrored here).
-	---------------------------------------------------------------------------
+	-- Self-checking DDS monitor. A packet is on send for exactly one
+	-- clock, so each is counted once; the expected phase per channel
+	-- advances once per observed packet (DUT phase starts at 0, 
+	-- so the first sample uses phase = FTW, mirrored here).
 	monitor : PROCESS (clock)
 		VARIABLE cur_seg      : INTEGER               := - 1;
 		VARIABLE ph0, ph1     : unsigned(15 DOWNTO 0) := (OTHERS => '0');
@@ -241,14 +222,11 @@ BEGIN
 		END IF;
 	END PROCESS;
 
-	---------------------------------------------------------------------------
-	-- Stimulus
-	---------------------------------------------------------------------------
 	stimulus : PROCESS
 		PROCEDURE pulse (pkt : tdma_min_data) IS
 		BEGIN
 			recv.data <= pkt;
-			WAIT FOR 20 ns; -- one clock period
+			WAIT FOR 20 ns; -- hold one clock period
 			recv.data <= (OTHERS => '0');
 			WAIT FOR 20 ns;
 		END PROCEDURE;
@@ -256,7 +234,7 @@ BEGIN
 		recv.data <= (OTHERS => '0');
 		WAIT FOR 100 ns;
 
-		-- ===== V2 + D4 : CH0, SR=00 (Fs=8 kHz, SR_DIV=10), FTW=2048 =====
+		-- V2 + D4: CH0, SR=00 (Fs=8 kHz, SR_DIV=10), FTW=2048
 		ASSERT sr_div(0) >= 2
 		REPORT "D4: SR_DIV(SR=00) < 2 - ch1 starvation invariant broken"
 			SEVERITY failure;
@@ -276,7 +254,7 @@ BEGIN
 		chk_val0 <= false;
 		WAIT FOR 1 us;
 
-		-- ===== V3 + D4 : CH1, SR=01 (Fs=16 kHz, SR_DIV=5), FTW=4096 =====
+		-- V3 + D4: CH1, SR=01 (Fs=16 kHz, SR_DIV=5), FTW=4096
 		ASSERT sr_div(1) >= 2
 		REPORT "D4: SR_DIV(SR=01) < 2 - ch1 starvation invariant broken"
 			SEVERITY failure;
@@ -296,16 +274,13 @@ BEGIN
 		chk_val1 <= false;
 		WAIT FOR 1 us;
 
-		-- ===== V4 : both channels due the SAME cycle (identical SR) =====
-		-- Phase is continuous in the DUT (no reset on re-enable), so this
-		-- segment checks the arbitration/no-starvation property and packet
-		-- well-formedness, not exact sample values.
+		-- V4: both channels, identical SR. Phase is continuous in the DUT
+		-- (no reset on re-enable), so values are not re-checked here
+		-- (proven in V2/V3); this checks no ch1 starvation + well-formed
+		-- packets.
 		ASSERT sr_div(0) >= 2
 		REPORT "D4: SR_DIV(SR=00) < 2 - ch1 starvation invariant broken"
 			SEVERITY failure;
-		-- Phase is continuous in the DUT (no reset on re-enable), so value
-		-- is NOT re-checked here (proven in V2/V3); this asserts the
-		-- arbitration/no-starvation property and packet well-formedness.
 		chk_ftw0   <= 2048;
 		chk_ftw1   <= 2048;
 		chk_div0   <= sr_div(0);
@@ -322,7 +297,7 @@ BEGIN
 		pulse(conf_adc("0100", "00", '1', '1', 2048));
 		WAIT FOR 12 us;
 
-		-- ===== Smoke : live FTW retune on CH0 (report waveform) =====
+		-- Live FTW retune on CH0 (report waveform).
 		chk_en0  <= false;
 		chk_en1  <= false;
 		chk_val0 <= false;
