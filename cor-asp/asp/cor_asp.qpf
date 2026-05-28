@@ -1,0 +1,10 @@
+QUARTUS_VERSION = "18.1"
+DATE = "20:45:00  May 18, 2026"
+
+# Standalone Quartus project for the COR-ASP IP block.
+# Used to obtain hardware resource usage and Fmax (TimeQuest)
+# without involving the rest of GP1.  Top-level entity is
+# `cor_asp` itself (its 32-bit NoC ports are treated as virtual
+# pins so no DE1-SoC pin assignments are required).
+
+PROJECT_REVISION = "cor_asp"
