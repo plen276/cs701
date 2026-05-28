@@ -1,0 +1,55 @@
+# ============================================================
+# Standalone COR-ASP synthesis project
+#
+# Purpose
+#   * Synthesise the autocorrelation ASP as a standalone IP
+#     block to obtain hardware-resource usage figures (ALMs,
+#     DSPs, M10K blocks) and the maximum achievable clock
+#     frequency reported by TimeQuest.
+#   * No DE1-SoC pin assignments - the 32-bit NoC ports of
+#     `cor_asp` are treated as virtual pins (synth-only).
+#
+# How to use
+#   1. Open Quartus Prime 18.1.
+#   2. File -> Open Project -> asp/cor_asp.qpf
+#   3. Processing -> Start Compilation
+#   4. Open the Compilation Report:
+#         "Resource Utilization by Entity"     for area
+#         "TimeQuest Slow 1100mV 85C Model -
+#          Fmax Summary"                       for Fmax
+# ============================================================
+
+set_global_assignment -name FAMILY "Cyclone V"
+set_global_assignment -name DEVICE 5CSEMA5F31C6
+set_global_assignment -name TOP_LEVEL_ENTITY cor_asp
+set_global_assignment -name ORIGINAL_QUARTUS_VERSION "18.1.0"
+set_global_assignment -name LAST_QUARTUS_VERSION "18.1.0 Standard Edition"
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name BOARD "DE1-SoC Board"
+set_global_assignment -name EDA_SIMULATION_TOOL "ModelSim-Altera (VHDL)"
+set_global_assignment -name EDA_OUTPUT_DATA_FORMAT VHDL -section_id eda_simulation
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
+set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
+set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
+set_global_assignment -name VHDL_SHOW_LMF_MAPPING_MESSAGES OFF
+
+# Virtual pin assignment: treat all top-level ports as virtual pins
+# (avoids the need for board-specific pinning while still allowing
+#  a clean Fitter and full TimeQuest analysis).
+set_instance_assignment -name VIRTUAL_PIN ON -to *
+
+# ============================================================
+# Source files
+# ============================================================
+set_global_assignment -name VHDL_FILE cor_asp_pkg.vhd
+set_global_assignment -name VHDL_FILE sample_mem.vhd
+set_global_assignment -name VHDL_FILE cor_asp_datapath.vhd
+set_global_assignment -name VHDL_FILE cor_asp_control.vhd
+set_global_assignment -name VHDL_FILE cor_asp.vhd
+
+# ============================================================
+# Timing constraints
+# ============================================================
+set_global_assignment -name SDC_FILE cor_asp.sdc
