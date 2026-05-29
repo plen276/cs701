@@ -38,7 +38,7 @@
 
 set_global_assignment -name FAMILY "Cyclone V"
 set_global_assignment -name DEVICE 5CSEMA5F31C6
-set_global_assignment -name TOP_LEVEL_ENTITY "gp-2"
+set_global_assignment -name TOP_LEVEL_ENTITY top_smoke
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 18.1.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "17:36:49  MAY 26, 2026"
 set_global_assignment -name LAST_QUARTUS_VERSION "18.1.0 Standard Edition"
@@ -47,3 +47,36 @@ set_global_assignment -name BOARD "DE1-SoC Board"
 set_global_assignment -name EDA_SIMULATION_TOOL "ModelSim-Altera (VHDL)"
 set_global_assignment -name EDA_TIME_SCALE "1 ps" -section_id eda_simulation
 set_global_assignment -name EDA_OUTPUT_DATA_FORMAT VHDL -section_id eda_simulation
+set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
+set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
+set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
+set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
+set_global_assignment -name VHDL_FILE src/top_recop_only.vhd
+set_global_assignment -name VHDL_FILE src/top_smoke.vhd
+set_global_assignment -name VHDL_FILE src/board/hex_to_7seg.vhd
+set_global_assignment -name VHDL_FILE src/asps/avg_asp.vhd
+set_global_assignment -name VHDL_FILE src/asps/adc_asp.vhd
+set_global_assignment -name VHDL_FILE src/ni/recop_ni.vhd
+set_global_assignment -name VHDL_FILE src/noc/TdmaMinTypes.vhd
+set_global_assignment -name VHDL_FILE src/noc/TdmaMinSwitch.vhd
+set_global_assignment -name VHDL_FILE src/noc/TdmaMinStage.vhd
+set_global_assignment -name VHDL_FILE src/noc/TdmaMinSlots.vhd
+set_global_assignment -name VHDL_FILE src/noc/TdmaMinInterface.vhd
+set_global_assignment -name VHDL_FILE src/noc/TdmaMinFabric.vhd
+set_global_assignment -name VHDL_FILE src/noc/TdmaMin.vhd
+set_global_assignment -name QIP_FILE src/noc/TdmaMinFifo/TdmaMinFifo.qip
+set_global_assignment -name VHDL_FILE src/recop.vhd
+set_global_assignment -name VHDL_FILE src/recop/datapath.vhd
+set_global_assignment -name VHDL_FILE src/recop/control_unit.vhd
+set_global_assignment -name VHDL_FILE src/recop/provided/various_constants.vhd
+set_global_assignment -name VHDL_FILE src/recop/provided/registers.vhd
+set_global_assignment -name VHDL_FILE src/recop/provided/regfile.vhd
+set_global_assignment -name VHDL_FILE src/recop/provided/recop_types.vhd
+set_global_assignment -name VHDL_FILE src/recop/provided/prog_mem.vhd
+set_global_assignment -name VHDL_FILE src/recop/provided/opcodes.vhd
+set_global_assignment -name VHDL_FILE src/recop/provided/data_mem.vhd
+set_global_assignment -name VHDL_FILE src/recop/provided/ALU.vhd
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
