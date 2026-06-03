@@ -88,7 +88,6 @@ ARCHITECTURE rtl OF cor_asp_control IS
     SIGNAL cfg_window      : UNSIGNED(15 DOWNTO 0)
         := TO_UNSIGNED(DEFAULT_WINDOW, 16);
     SIGNAL cfg_dest        : STD_LOGIC_VECTOR(3 DOWNTO 0) := DEFAULT_DEST;
-    SIGNAL cfg_src_filter  : STD_LOGIC_VECTOR(3 DOWNTO 0) := NODE_ID_ANY;
     SIGNAL cfg_interval    : UNSIGNED(15 DOWNTO 0)
         := TO_UNSIGNED(DEFAULT_INTERVAL, 16);
     SIGNAL cfg_shift       : UNSIGNED(4 DOWNTO 0)
@@ -113,17 +112,15 @@ ARCHITECTURE rtl OF cor_asp_control IS
     -- ============================================================
     -- Decoded packet fields (combinational)
     -- ============================================================
-    SIGNAL pkt_dest        : STD_LOGIC_VECTOR(3 DOWNTO 0);
-    SIGNAL pkt_src         : STD_LOGIC_VECTOR(3 DOWNTO 0);
     SIGNAL pkt_type        : STD_LOGIC_VECTOR(3 DOWNTO 0);
-    SIGNAL pkt_cmd         : STD_LOGIC_VECTOR(3 DOWNTO 0);
-    SIGNAL pkt_payload     : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL pkt_dest        : STD_LOGIC_VECTOR(3 DOWNTO 0);
+    SIGNAL pkt_next        : STD_LOGIC_VECTOR(3 DOWNTO 0);  -- Conf-DP only
+    SIGNAL pkt_mode        : STD_LOGIC_VECTOR(3 DOWNTO 0);  -- Conf-DP only
+    SIGNAL pkt_value       : STD_LOGIC_VECTOR(15 DOWNTO 0);
 
     SIGNAL pkt_for_us      : STD_LOGIC;
-    SIGNAL pkt_from_ok     : STD_LOGIC;
     SIGNAL is_cmd          : STD_LOGIC;
     SIGNAL is_data         : STD_LOGIC;
-    SIGNAL is_ctrl         : STD_LOGIC;
 
     -- ============================================================
     -- Output packet register (1-deep)
@@ -139,31 +136,34 @@ ARCHITECTURE rtl OF cor_asp_control IS
 BEGIN
 
     -- ============================================================
-    -- Packet decode (combinational)
+    -- Packet decode (combinational) - Lab 2 reference format.
+    --   TYPE  = pkt_in[31:28]
+    --   DEST  = pkt_in[27:24]
+    --   NEXT  = pkt_in[23:20]  (Conf-DP only)
+    --   MODE  = pkt_in[19:16]  (Conf-DP only)
+    --   VALUE = pkt_in[15:0]   (Data sample / Conf-DP parameter)
+    -- The Data-packet CH bit [16] is ignored (single-stream ASP).
     -- ============================================================
-    pkt_dest    <= pkt_in(PKT_DEST_HI DOWNTO PKT_DEST_LO);
-    pkt_src     <= pkt_in(PKT_SRC_HI  DOWNTO PKT_SRC_LO);
     pkt_type    <= pkt_in(PKT_TYPE_HI DOWNTO PKT_TYPE_LO);
-    pkt_cmd     <= pkt_in(PKT_CMD_HI  DOWNTO PKT_CMD_LO);
-    pkt_payload <= pkt_in(PKT_PAY_HI  DOWNTO PKT_PAY_LO);
+    pkt_dest    <= pkt_in(PKT_DEST_HI DOWNTO PKT_DEST_LO);
+    pkt_next    <= pkt_in(PKT_NEXT_HI DOWNTO PKT_NEXT_LO);
+    pkt_mode    <= pkt_in(PKT_MODE_HI DOWNTO PKT_MODE_LO);
+    pkt_value   <= pkt_in(PKT_VAL_HI  DOWNTO PKT_VAL_LO);
 
     pkt_for_us  <= '1' WHEN pkt_dest = MY_NODE_ID ELSE '0';
-    pkt_from_ok <= '1' WHEN (cfg_src_filter = NODE_ID_ANY)
-                          OR (pkt_src = cfg_src_filter) ELSE '0';
+    -- The Lab 2 format has no SRC field, so source filtering is not
+    -- possible; the ASP accepts any Conf-DP/Data packet addressed to it.
     is_cmd      <= '1' WHEN pkt_in_valid = '1' AND pkt_for_us = '1'
-                          AND pkt_type = PKT_TYPE_CMD  ELSE '0';
+                          AND pkt_type = PKT_TYPE_CONF_DP ELSE '0';
     is_data     <= '1' WHEN pkt_in_valid = '1' AND pkt_for_us = '1'
-                          AND pkt_from_ok = '1'
-                          AND pkt_type = PKT_TYPE_DATA ELSE '0';
-    is_ctrl     <= '1' WHEN pkt_in_valid = '1' AND pkt_for_us = '1'
-                          AND pkt_type = PKT_TYPE_CTRL ELSE '0';
+                          AND pkt_type = PKT_TYPE_DATA    ELSE '0';
 
     -- ============================================================
     -- Output ports
     -- ============================================================
     sm_wr_en    <= is_data;
     sm_wr_addr  <= STD_LOGIC_VECTOR(wr_ptr);
-    sm_wr_data  <= pkt_payload;
+    sm_wr_data  <= pkt_value;
 
     newest_addr <= STD_LOGIC_VECTOR(newest_addr_r);
     half_window <= resize(shift_right(cfg_window, 1), N_WIDTH);
@@ -194,7 +194,6 @@ BEGIN
             IF reset = '1' THEN
                 cfg_window     <= TO_UNSIGNED(DEFAULT_WINDOW,   16);
                 cfg_dest       <= DEFAULT_DEST;
-                cfg_src_filter <= NODE_ID_ANY;
                 cfg_interval   <= TO_UNSIGNED(DEFAULT_INTERVAL, 16);
                 cfg_shift      <= TO_UNSIGNED(DEFAULT_SHIFT,    5);
                 cfg_enable     <= '0';
@@ -205,36 +204,41 @@ BEGIN
                 corr_cnt       <= (OTHERS => '0');
                 out_pkt_r      <= (OTHERS => '0');
             ELSE
-                -- ============== Handle CMD packets ==============
+                -- ============== Handle Conf-DP packets ==========
                 IF is_cmd = '1' THEN
-                    CASE pkt_cmd IS
-                        WHEN CMD_SET_WINDOW =>
+                    -- Every Conf-DP addressed to COR carries the output
+                    -- destination in its NEXT field; latch it so result
+                    -- Data packets are sent there.  This replaces the
+                    -- old explicit SET_DEST command.
+                    cfg_dest <= pkt_next;
+
+                    CASE pkt_mode IS
+                        WHEN MODE_SET_WINDOW =>
                             -- accept only even windows in [4, 256]
-                            IF unsigned(pkt_payload) >= 4
-                               AND unsigned(pkt_payload) <= 256
-                               AND pkt_payload(0) = '0' THEN
-                                cfg_window <= unsigned(pkt_payload);
+                            IF unsigned(pkt_value) >= 4
+                               AND unsigned(pkt_value) <= 256
+                               AND pkt_value(0) = '0' THEN
+                                cfg_window <= unsigned(pkt_value);
                             END IF;
-                        WHEN CMD_SET_DEST =>
-                            cfg_dest <= pkt_payload(3 DOWNTO 0);
-                        WHEN CMD_SET_INTERVAL =>
-                            IF unsigned(pkt_payload) /= 0 THEN
-                                cfg_interval <= unsigned(pkt_payload);
+                        WHEN MODE_SET_INTERVAL =>
+                            IF unsigned(pkt_value) /= 0 THEN
+                                cfg_interval <= unsigned(pkt_value);
                             END IF;
-                        WHEN CMD_SET_SHIFT =>
-                            cfg_shift <= unsigned(pkt_payload(4 DOWNTO 0));
-                        WHEN CMD_SET_ENABLE =>
-                            cfg_enable <= pkt_payload(0);
+                        WHEN MODE_SET_SHIFT =>
+                            cfg_shift <= unsigned(pkt_value(4 DOWNTO 0));
+                        WHEN MODE_SET_ENABLE =>
+                            cfg_enable <= pkt_value(0);
                             interval_cnt <= (OTHERS => '0');
-                        WHEN CMD_RESET_BUF =>
+                        WHEN MODE_RESET_BUF =>
                             wr_ptr        <= (OTHERS => '0');
                             newest_addr_r <= (OTHERS => '0');
                             interval_cnt  <= (OTHERS => '0');
                             sample_cnt    <= (OTHERS => '0');
                             corr_cnt      <= (OTHERS => '0');
-                        WHEN CMD_SET_SRC =>
-                            cfg_src_filter <= pkt_payload(3 DOWNTO 0);
                         WHEN OTHERS =>
+                            -- Unknown / legacy modes (e.g. old SET_DEST,
+                            -- SET_SRC): NEXT has already been applied
+                            -- above, nothing else to do.
                             NULL;
                     END CASE;
                 END IF;
@@ -257,14 +261,6 @@ BEGIN
                     END IF;
                 END IF;
 
-                -- ============== Handle CTRL packets =============
-                -- (currently only CMD_RESET_BUF is supported via CMD;
-                --  CTRL packets are reserved for system-wide use)
-                IF is_ctrl = '1' THEN
-                    -- Reserved: in future, broadcast reset / enable
-                    NULL;
-                END IF;
-
                 -- ============== Issue trig (1-cycle pulse) ======
                 IF want_trig = '1' THEN
                     trig         <= '1';
@@ -272,13 +268,12 @@ BEGIN
                 END IF;
 
                 -- ============== Handle correlation result =======
+                -- Emit a Lab 2 Data packet to the latched destination.
+                -- NEXT does not exist in Data packets, so the previously
+                -- stored cfg_dest becomes this packet's DEST.  CH is a
+                -- single-stream '0'; reserved bits are '0'.
                 IF cor_result_v = '1' THEN
-                    out_pkt_r <= pkt_pack(
-                        cfg_dest,
-                        MY_NODE_ID,
-                        PKT_TYPE_DATA,
-                        x"0",
-                        cor_result);
+                    out_pkt_r   <= make_data(cfg_dest, '0', cor_result);
                     out_valid_r <= '1';
                     corr_cnt    <= corr_cnt + 1;
                 END IF;

@@ -363,7 +363,7 @@ BEGIN
                 IF pkt_in(PKT_TYPE_HI DOWNTO PKT_TYPE_LO) = PKT_TYPE_DATA THEN
                     tb_data_pulses <= tb_data_pulses + 1;
                 END IF;
-                IF pkt_in(PKT_TYPE_HI DOWNTO PKT_TYPE_LO) = PKT_TYPE_CMD THEN
+                IF pkt_in(PKT_TYPE_HI DOWNTO PKT_TYPE_LO) = PKT_TYPE_CONF_DP THEN
                     tb_cmd_pulses <= tb_cmd_pulses + 1;
                 END IF;
             END IF;
@@ -549,18 +549,20 @@ BEGIN
         -- Driving on / very close to the rising edge causes Questa to
         -- evaluate the ASP's clocked process with the still-stale
         -- `is_data='0'`, and the packet is silently lost.
+        -- Conf-DP: ReCOP-style configuration.  The output destination
+        -- (PD-ASP) travels in the NEXT field of every Conf-DP, so the
+        -- ASP latches it as cfg_dest (replacing the old SET_DEST cmd).
         PROCEDURE send_cmd (
-            cmd_id  : STD_LOGIC_VECTOR(3 DOWNTO 0);
+            mode    : STD_LOGIC_VECTOR(3 DOWNTO 0);
             payload : STD_LOGIC_VECTOR(15 DOWNTO 0)
         ) IS
         BEGIN
             WAIT UNTIL falling_edge(clk);
-            pkt_in <= pkt_pack(
-                dest    => NODE_ID_COR,
-                src     => NODE_ID_RECOP,
-                ptype   => PKT_TYPE_CMD,
-                cmd     => cmd_id,
-                payload => payload);
+            pkt_in <= make_conf_dp(
+                dest      => NODE_ID_COR,
+                next_dest => NODE_ID_PD,
+                mode      => mode,
+                value     => payload);
             pkt_in_valid <= '1';
             WAIT UNTIL rising_edge(clk);
             pkt_in_valid <= '0';
@@ -568,15 +570,15 @@ BEGIN
             WAIT UNTIL rising_edge(clk);
         END PROCEDURE;
 
+        -- Data packet carrying one AVG-filtered sample to COR.  CH is
+        -- a single-stream '0'; reserved bits are '0'.
         PROCEDURE send_sample (s : INTEGER) IS
         BEGIN
             WAIT UNTIL falling_edge(clk);
-            pkt_in <= pkt_pack(
-                dest    => NODE_ID_COR,
-                src     => NODE_ID_AVG,
-                ptype   => PKT_TYPE_DATA,
-                cmd     => x"0",
-                payload => STD_LOGIC_VECTOR(TO_UNSIGNED(s, 16)));
+            pkt_in <= make_data(
+                dest  => NODE_ID_COR,
+                ch    => '0',
+                value => STD_LOGIC_VECTOR(TO_UNSIGNED(s, 16)));
             pkt_in_valid <= '1';
             WAIT UNTIL rising_edge(clk);
             pkt_in_valid <= '0';
@@ -611,13 +613,14 @@ BEGIN
         write(l, STRING'(")..."));
         writeline(output, l);
 
-        send_cmd(CMD_RESET_BUF,    x"0000");
-        send_cmd(CMD_SET_WINDOW,   STD_LOGIC_VECTOR(TO_UNSIGNED(WINDOW,    16)));
-        send_cmd(CMD_SET_INTERVAL, STD_LOGIC_VECTOR(TO_UNSIGNED(1,         16)));
-        send_cmd(CMD_SET_SHIFT,    STD_LOGIC_VECTOR(TO_UNSIGNED(SHIFT_AMT, 16)));
-        send_cmd(CMD_SET_DEST,     STD_LOGIC_VECTOR(resize(unsigned(NODE_ID_PD), 16)));
-        send_cmd(CMD_SET_SRC,      STD_LOGIC_VECTOR(resize(unsigned(NODE_ID_AVG), 16)));
-        send_cmd(CMD_SET_ENABLE,   x"0001");
+        -- Output destination (PD) is carried in the Conf-DP NEXT field
+        -- of every command, so no explicit SET_DEST is needed; the
+        -- Lab 2 format has no SRC field, so SET_SRC is gone too.
+        send_cmd(MODE_RESET_BUF,    x"0000");
+        send_cmd(MODE_SET_WINDOW,   STD_LOGIC_VECTOR(TO_UNSIGNED(WINDOW,    16)));
+        send_cmd(MODE_SET_INTERVAL, STD_LOGIC_VECTOR(TO_UNSIGNED(1,         16)));
+        send_cmd(MODE_SET_SHIFT,    STD_LOGIC_VECTOR(TO_UNSIGNED(SHIFT_AMT, 16)));
+        send_cmd(MODE_SET_ENABLE,   x"0001");
 
         write(l, STRING'("[tb] Streaming noisy samples..."));
         writeline(output, l);
