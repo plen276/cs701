@@ -22,12 +22,12 @@ begin
 	begin
 		if rising_edge(clock) then
 			if reset = '1' then
-				min <= -2147483647;
+				min <= 2147483647;
 			else
 				if ld_in = '1' then
 					-- If input is less than current min, overwrite
 					input_var := to_integer(signed(input));
-					if input_var > min then
+					if input_var < min then
 						min <= input_var;
 					end if;
 					
