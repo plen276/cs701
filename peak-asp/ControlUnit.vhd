@@ -101,10 +101,10 @@ begin
 				seq_min_ld <= '0';
 				
 			else
-				if recv(31 downto 28) = "1111" then -- If configuration packet
+				if recv(31 downto 28) = "1100" then -- If configuration packet
 				
-					-- Set addr
-					addr <= "0000" & recv(27 downto 24);
+					-- Set addr from 'Next' field
+					addr <= "0000" & recv(23 downto 20);
 				
 					-- Set lifetime as 2^ recv(4->0) 
 					lifetime <= to_integer(shift_left(shift_var, to_integer(unsigned(recv(4 downto 0)))));
@@ -119,10 +119,17 @@ begin
 						when "101" => hysteresis <= 30;
 						when "110" => hysteresis <= 40;
 						when "111" => hysteresis <= 50;
+						when others => hysteresis <= 50;
 					end case;
 					
 					-- Set baseline adjust rate as 2^ recv(12->8)
 					adj_rate <= to_integer(shift_left(shift_var, to_integer(unsigned(recv(12 downto 8)))));
+					
+					if recv(17) = '1' then -- Set enable/state from 'En' bit
+						state := "01";
+					else
+						state := "00";
+					end if;
 					
 					-- Tell all components to configure
 					base_reset <= '0';
@@ -148,7 +155,7 @@ begin
 					seq_min_reset <= '0';
 					seq_min_ld <= '0';
 					
-				elsif recv(31 downto 28) = "0000" then -- If data packet
+				elsif recv(31 downto 28) = "1000" then -- If data packet
 					base_in <= recv(15 downto 0);
 					find_in <= recv(15 downto 0);
 					
@@ -161,7 +168,7 @@ begin
 					max_reset <= '0';
 					max_conf <= '0';
 					min_reset <= '0';
-					min_conf <= '1';
+					min_conf <= '0';
 					seq_max_reset <= '0';
 					seq_min_reset <= '0';
 					
@@ -169,7 +176,7 @@ begin
 				
 				-- Cycle outputs from max memory
 				if max_size > 0 then
-					if max_mem_index < max_size then
+					if max_mem_index < max_size - 1 then
 						max_sel_v <= max_mem_index;
 						max_sel_a <= max_mem_index;
 						seq_max_ld <= '1';
@@ -186,7 +193,7 @@ begin
 					
 				-- Cycle outputs from min memory
 				if min_size > 0 then
-					if min_mem_index < min_size then
+					if min_mem_index < min_size - 1 then
 						min_sel_v <= min_mem_index;
 						min_sel_a <= min_mem_index;
 						seq_min_ld <= '1';
@@ -202,21 +209,24 @@ begin
 				end if;
 				
 				case state is
-					when "00" =>
+					when "00" => -- Enable off
+						send(31 downto 0) <= (others => '0');
+						state := "00";
+					when "01" => -- Send global max
 						send(31 downto 30) <= "01";
 						send(29 downto 16) <= (others => '0');
 						send(15 downto 0) <= global_max;
-						state := "01";
-					when "01" =>
+						state := "10";
+					when "10" => -- Send global min
 						send(31 downto 30) <= "10";
 						send(29 downto 16) <= (others => '0');
 						send(15 downto 0) <= global_min;
-						state := "10";
-					when "10" =>
+						state := "11";
+					when "11" => -- Send time between peaks
 						send(31 downto 30) <= "11";
 						send(29 downto 16) <= (others => '0');
 						send(15 downto 0) <= std_logic_vector(to_unsigned(peak_time, 16)); -- Change to time between peaks
-						state := "00";
+						state := "01";
 					when others =>
 						send(31 downto 0) <= (others => '0');
 						state := "00";

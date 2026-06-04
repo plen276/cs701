@@ -2,13 +2,18 @@ library ieee;
 use ieee.numeric_std.all;
 use ieee.std_logic_1164.all;
 
+use work.TdmaMinTypes.all;
+
 entity PeakDetector is
 	port (
 		clock : in std_logic;
 		reset : in std_logic;
-		addr : out std_logic_vector(7 downto 0);
-		send : out std_logic_vector(31 downto 0);
-		recv : in std_logic_vector(31 downto 0)
+		--addr : out std_logic_vector(7 downto 0);
+		--send : out std_logic_vector(31 downto 0);
+		--recv : in std_logic_vector(31 downto 0)
+		
+		send  : out tdma_min_port;
+		recv  : in  tdma_min_port
 	);
 end entity;
 
@@ -211,9 +216,9 @@ begin
 		port map (
 			clock => clock,
 			reset => reset,
-			addr => addr,
-			send => send,
-			recv => recv,
+			addr => send.addr,
+			send => send.data,
+			recv => recv.data,
 			-- To BaseAdj
 			base_reset => base_reset,
 			base_conf => base_conf,

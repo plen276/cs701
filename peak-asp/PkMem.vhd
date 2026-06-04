@@ -88,8 +88,8 @@ begin
 					-- Check for out of lifetime values
 					if ages_var(size_var - 1) > lifetime then
 						-- Clear oldest
-						values_var(size_var) := (others => '0');
-						ages_var(size_var) := 0;
+						values_var(size_var - 1) := (others => '0');
+						ages_var(size_var - 1) := 0;
 						-- Move size_var
 						if size_var > 0 then
 							size_var := size_var - 1;
@@ -117,7 +117,7 @@ begin
 				end if;
 				
 				-- Update signals
-				for i in 1 to 15 loop
+				for i in 0 to 15 loop
 					values(i) <= values_var(i);
 					ages(i) <= ages_var(i);
 				end loop;
