@@ -101,7 +101,7 @@ begin
 				seq_min_ld <= '0';
 				
 			else
-				if recv(31 downto 28) = "1100" then -- If configuration packet
+				if recv(31 downto 28) = "1001" then -- If configuration packet
 				
 					-- Set addr from 'Next' field
 					addr <= "0000" & recv(23 downto 20);
@@ -213,17 +213,20 @@ begin
 						send(31 downto 0) <= (others => '0');
 						state := "00";
 					when "01" => -- Send global max
-						send(31 downto 30) <= "01";
+						send(31 downto 28) <= "1000";
+						send(27 downto 26) <= "01";
 						send(29 downto 16) <= (others => '0');
 						send(15 downto 0) <= global_max;
 						state := "10";
 					when "10" => -- Send global min
-						send(31 downto 30) <= "10";
+						send(31 downto 28) <= "1000";
+						send(27 downto 26) <= "10";
 						send(29 downto 16) <= (others => '0');
 						send(15 downto 0) <= global_min;
 						state := "11";
 					when "11" => -- Send time between peaks
-						send(31 downto 30) <= "11";
+						send(31 downto 28) <= "1000";
+						send(27 downto 26) <= "11";
 						send(29 downto 16) <= (others => '0');
 						send(15 downto 0) <= std_logic_vector(to_unsigned(peak_time, 16)); -- Change to time between peaks
 						state := "01";
