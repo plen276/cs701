@@ -18,16 +18,27 @@ USE work.TdmaMinTypes.ALL;
 -- sufficient. ADC sample-rate divisors are calculated against this
 -- clock via the adc_asp clock_hz generic override below.
 --
--- Topology:
---   NoC port 0  ReCOP + recop_ni
---   NoC port 1  adc_asp  (IP, DDS sine source)
---   NoC port 2  avg_asp  (IP, moving-average filter)
---   NoC port 3  cor_asp via cor_asp_noc adapter (teammate IP, packet
---               format aligned 2026-06-01)
---   NoC port 4  RESERVED for pd_asp   (PD team alignment pending, D5)
+-- Node identity / addressing:
+--   A node's NoC identity IS its port index. TdmaMin assigns each
+--   TdmaMinInterface a hardwired `identity` = port number via its
+--   generate loop, and that interface answers to address = identity.
+--   Therefore ReCOP needs NO explicit ID generic: its identity is
+--   structurally fixed to port 0 by the wiring below. A node only
+--   needs to know OTHER nodes' ids (to address them), which is carried
+--   at run time in each packet's DEST/NEXT nibble set by the ReCOP
+--   configuration program. The canonical id<->port map is:
+--
+--   NoC port 0  ReCOP + recop_ni            (id 0)
+--   NoC port 1  adc_asp  (DDS sine source)  (id 1)
+--   NoC port 2  avg_asp  (moving-average)   (id 2)
+--   NoC port 3  cor_asp via cor_asp_noc     (id 3)
+--   NoC port 4  PeakDetector (pd_asp)       (id 4)
 --   NoC port 5  RESERVED for Nios II bridge (W7, deferred)
 --   NoC port 6  RESERVED for reconfig node  (W6)
 --   NoC port 7  spare
+--
+--   Reference data pipeline (configured by the ReCOP boot program):
+--     ADC(1) -> AVG(2) -> COR(3) -> PD(4)   [results -> ReCOP(0)]
 --
 -- Board controls:
 --   CLOCK_50    50 MHz board clock (input to PLL)
@@ -203,6 +214,21 @@ ARCHITECTURE rtl OF top_level IS
         );
     END COMPONENT;
 
+    -- PeakDetector (pd_asp): teammate IP. Exposes the tdma_min_port
+    -- record directly, so it drops straight onto a NoC port with no
+    -- adapter. It consumes Data packets (type 1000) routed to it and,
+    -- once enabled by its own config packet (type 1100), reports peaks.
+    -- See header note re: enabling PD output before driving the NoC.
+    COMPONENT PeakDetector IS
+        PORT
+        (
+            clock : IN STD_LOGIC;
+            reset : IN STD_LOGIC;
+            send  : OUT tdma_min_port;
+            recv  : IN tdma_min_port
+        );
+    END COMPONENT;
+
 BEGIN
 
     -- ===== Clock generation =====
@@ -304,8 +330,19 @@ BEGIN
     dbg_last_corr => OPEN
     );
 
-    -- ===== Ports 4..7 idle (reserved per topology comment in header) =====
-    gen_unused : FOR i IN 4 TO NOC_PORTS - 1 GENERATE
+    -- ===== PD-ASP (NoC port 4) =====
+    -- PeakDetector uses the tdma_min_port record natively, so it wires
+    -- straight to the fabric. Active-high reset shared with the system.
+    U_PD : PeakDetector PORT
+    MAP (
+    clock => sys_clk,
+    reset => reset,
+    send  => sends(4),
+    recv  => recvs(4)
+    );
+
+    -- ===== Ports 5..7 idle (reserved per topology comment in header) =====
+    gen_unused : FOR i IN 5 TO NOC_PORTS - 1 GENERATE
         sends(i).addr <= (OTHERS => '0');
         sends(i).data <= (OTHERS => '0');
     END GENERATE;

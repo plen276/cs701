@@ -92,24 +92,23 @@ PACKAGE cor_asp_pkg IS
     CONSTANT MODE_SET_ENABLE   : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0100";
     CONSTANT MODE_RESET_BUF    : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0101";
 
-    -- Suggested default node assignments for the 8-port NoC
-    --   (any team may reassign, but defaults are agreed for the
-    --    reference frequency-relay pipeline).
+    -- Canonical GP-2 node-id == NoC-port map (must match top_level
+    -- wiring; a node's identity is its TDMA-MIN port index).
     --
     --   id 0 - ReCOP
-    --   id 1 - Nios II
-    --   id 2 - ADC-ASP
-    --   id 3 - AVG-ASP
-    --   id 4 - COR-ASP   (this design)
-    --   id 5 - PD-ASP
+    --   id 1 - ADC-ASP
+    --   id 2 - AVG-ASP
+    --   id 3 - COR-ASP   (this design)
+    --   id 4 - PD-ASP
+    --   id 5 - Nios II bridge (reserved)
     --   id 6 - reserved
     --   id 7 - reserved
-    CONSTANT NODE_ID_RECOP : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0000";
-    CONSTANT NODE_ID_NIOS  : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0001";
-    CONSTANT NODE_ID_ADC   : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0010";
-    CONSTANT NODE_ID_AVG   : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0011";
-    CONSTANT NODE_ID_COR   : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0100";
-    CONSTANT NODE_ID_PD    : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0101";
+    CONSTANT NODE_ID_RECOP : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0000"; -- port 0
+    CONSTANT NODE_ID_ADC   : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0001"; -- port 1
+    CONSTANT NODE_ID_AVG   : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0010"; -- port 2
+    CONSTANT NODE_ID_COR   : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0011"; -- port 3
+    CONSTANT NODE_ID_PD    : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0100"; -- port 4
+    CONSTANT NODE_ID_NIOS  : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0101"; -- port 5 (reserved)
 
     -- ============================================================
     -- Helpers to build packets
