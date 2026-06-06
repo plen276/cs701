@@ -22,12 +22,12 @@
 start   NOOP                  ; settle one cycle out of reset
 
 ; ---- PD-ASP (id 4): detection params, output dest = ReCOP(0) ----
-;   upper 0xC400 = 1100(Conf-PD) 0100(dest=PD) 0000(Next=ReCOP) 0000(En=0)
+;   upper 0x9400 = 1001(Conf-PD) 0100(dest=PD) 0000(Next=ReCOP) 0000(En=0)
 ;   lower 0x074A = adj_rate 2^7, hysteresis 10, lifetime 2^10
 ;   En is kept 0: PD ingests data but does NOT drive the NoC yet
 ;   (its result-send framing needs PD-side alignment first). To turn
-;   PD output on once aligned, change the upper word to 0xC402.
-        LDR R1, #0xC400
+;   PD output on once aligned, change the upper word to 0x9402.
+        LDR R1, #0x9400
         DATACALL R1 #0x074A
         NOOP
         NOOP
