@@ -129,7 +129,7 @@ to_raw  LDR R8 #0x0000          ; mode = RAW
 ; ========== configure MEASURE pipeline (full chain) ==========
 to_meas LDR R8 #0x0001          ; mode = MEASURE
         LDR R9 #0x0000          ; clear alarm latch on mode change
-        LDR R10 #0x0400         ; inhibit alarm while PD/COR settle
+        LDR R10 #0x0040         ; inhibit alarm while PD/COR settle
         ; PD: enable, output -> ReCOP(0)
         LDR R1 #0x9402
         DATACALL R1 #0x074A
@@ -216,7 +216,7 @@ chk_warm SUB R4 #0x0000
         ; RAW->MEASURE transition can latch a startup alarm.
         SUB R10 #0x0000
         SZ chk_max
-        SUB R10 #0x0001
+        SUBV R10 R10 #0x0001
         JMP show_leds
 
 chk_max ; alarm if period > PMAX (frequency too low)
@@ -234,8 +234,7 @@ chk_min ; alarm if period <= PMIN (frequency too high)
         MAX R6 #PMIN
         SUB R6 #PMIN           ; Z=1 => period <= PMIN
         SZ set_min
-        LDR R9 #0x0000         ; in range -> clear transient/old alarm
-        JMP show_leds
+        JMP show_leds          ; in range: leave latch unchanged (KEY2 acks)
 set_min LDR R9 #0x0001         ; set alarm
 
         ; --- build LED word: bit0 run, bit1 mode, bit2 locked, 9:7 alarm ---
