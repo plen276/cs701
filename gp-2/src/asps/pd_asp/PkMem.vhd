@@ -11,6 +11,7 @@ entity PkMem is
 		set_lifetime : in integer;
 		
 		wren : in std_logic;
+		sample_en : in std_logic;   -- one pulse per new correlation value
 		input : in std_logic_vector(15 downto 0);
 		
 		size : out integer range 0 to 16;
@@ -103,12 +104,17 @@ begin
 
 						-- Reset counter
 						counter <= 0;
-					else
+					elsif sample_en = '1' then
+						-- Count CORRELATION SAMPLES between peaks, not clock
+						-- cycles: peak_time becomes the number of correlation
+						-- values per signal period (clock-independent, fits 16
+						-- bits), per the reference design.
 						counter <= counter + 1;
 					end if;
 
-					-- If there are entries
-					if size_var > 0 then
+					-- Lifetime/aging also advances per sample (lifetime is a
+					-- sample count), so peaks age out independently of clock rate.
+					if sample_en = '1' and size_var > 0 then
 						-- Check for out of lifetime values
 						if ages_var(size_var - 1) > lifetime then
 							-- Clear oldest

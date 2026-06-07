@@ -167,10 +167,11 @@ architecture beh of PeakDetector is
 			
 			conf_en : in std_logic;
 			set_lifetime : in integer;
-			
+
 			wren : in std_logic;
+			sample_en : in std_logic;
 			input : in std_logic_vector(15 downto 0);
-			
+
 			size : out integer range 0 to 16;
 			select_v : in integer range 0 to 15;
 			select_a : in integer range 0 to 15;
@@ -297,8 +298,9 @@ begin
 			
 			conf_en => max_conf,
 			set_lifetime => lifetime,
-			
+
 			wren => max_wren,
+			sample_en => find_ld,
 			input => find_out,
 			
 			size => max_size,
@@ -316,8 +318,9 @@ begin
 			
 			conf_en => min_conf,
 			set_lifetime => lifetime,
-			
+
 			wren => min_wren,
+			sample_en => find_ld,
 			input => find_out,
 			
 			size => min_size,

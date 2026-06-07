@@ -10,13 +10,12 @@ USE work.TdmaMinTypes.ALL;
 --
 -- DE1-SoC board top for GP-2.
 --
--- Clock: CLOCK_50 feeds a PLL (system_pll, 50 -> 25 MHz) and
--- everything downstream runs on the 25 MHz `sys_clk` domain.
--- The 50 MHz target failed setup timing (-7 ns slack on the
--- IR -> regfile-write path; see ReCOP datapath/CU notes); the
--- PLL drop to 25 MHz gives ~13 ns of margin and is functionally
--- sufficient. ADC sample-rate divisors are calculated against this
--- clock via the adc_asp clock_hz generic override below.
+-- Clock: CLOCK_50 (50 MHz) feeds system_pll_10, which outputs 10 MHz on
+-- outclk_0 -> sys_clk. Everything downstream runs on 10 MHz.
+-- The 50 MHz target failed setup timing (-7 ns slack, IR->regfile-write path);
+-- 25 MHz gives ~13 ns margin without touching the ReCOP architecture.
+-- ADC sample-rate divisors are computed against 10 MHz via the clock_hz
+-- generic override on the adc_asp instantiation below.
 --
 -- Node identity / addressing:
 --   A node's NoC identity IS its port index. TdmaMin assigns each
@@ -63,8 +62,8 @@ ENTITY top_level IS
     GENERIC (
         -- Defaults are board values; a testbench overrides them small so
         -- key debounce and HEX refresh happen in a few cycles, not ms.
-        DEB_TICKS   : NATURAL := 65535;     -- debounce sample period - 1 (~2.6 ms @25 MHz)
-        HEX_REFRESH : NATURAL := 6_250_000  -- HEX latch period - 1 (~4 Hz @25 MHz)
+        DEB_TICKS   : NATURAL := 26000;    -- debounce sample period - 1 (~2.6 ms @10 MHz)
+        HEX_REFRESH : NATURAL := 2_500_000 -- HEX latch period - 1 (~4 Hz @10 MHz)
     );
     PORT
     (
@@ -84,10 +83,10 @@ END ENTITY top_level;
 ARCHITECTURE rtl OF top_level IS
 
     -- ===== Clock + reset =====
-    SIGNAL sys_clk       : STD_LOGIC; -- 25 MHz PLL output, drives everything
+    SIGNAL sys_clk       : STD_LOGIC; -- 10 MHz PLL output, drives everything
     SIGNAL pll_locked    : STD_LOGIC; -- PLL lock indicator
     SIGNAL key0_reset    : STD_LOGIC; -- raw active-high reset from KEY(0)
-    SIGNAL reset         : STD_LOGIC; -- gated reset (asserted until PLL locked)
+    SIGNAL reset         : STD_LOGIC; -- gated reset (held until PLL locked)
 
     -- ===== Board controls =====
     SIGNAL debug_mode    : STD_LOGIC;
@@ -109,12 +108,12 @@ ARCHITECTURE rtl OF top_level IS
     SIGNAL io_clear_sig  : STD_LOGIC;
     -- KEY debounce (sampled at DEB_TICKS): sticky press flags
     -- bit0 = KEY1 (mode), bit1 = KEY2 (ack)
-    SIGNAL deb_cnt       : UNSIGNED(15 DOWNTO 0) := (OTHERS => '0');
-    SIGNAL key1_prev     : STD_LOGIC := '1';
-    SIGNAL key2_prev     : STD_LOGIC := '1';
-    SIGNAL events_reg    : STD_LOGIC_VECTOR(1 DOWNTO 0) := "00";
+    SIGNAL deb_cnt       : UNSIGNED(15 DOWNTO 0)         := (OTHERS => '0');
+    SIGNAL key1_prev     : STD_LOGIC                     := '1';
+    SIGNAL key2_prev     : STD_LOGIC                     := '1';
+    SIGNAL events_reg    : STD_LOGIC_VECTOR(1 DOWNTO 0)  := "00";
     -- HEX display throttle (~4 Hz): a slow snapshot so fast values are readable
-    SIGNAL ref_cnt       : UNSIGNED(23 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL ref_cnt       : UNSIGNED(23 DOWNTO 0)         := (OTHERS => '0');
     SIGNAL hex_disp      : STD_LOGIC_VECTOR(15 DOWNTO 0) := (OTHERS => '0');
     -- Debug-display segment source for HEX4 (FSM state)
     SIGNAL state_seg     : STD_LOGIC_VECTOR(6 DOWNTO 0);
@@ -138,40 +137,40 @@ ARCHITECTURE rtl OF top_level IS
     COMPONENT recop IS
         PORT
         (
-            clk        : IN STD_LOGIC;
-            reset      : IN STD_LOGIC;
-            z_flag     : OUT STD_LOGIC;
-            debug_mode : IN STD_LOGIC;
-            debug_step : IN STD_LOGIC;
-            sip        : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
-            sop        : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-            dpcr       : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-            dpcr_load  : OUT STD_LOGIC;
-            io_sw          : IN  STD_LOGIC_VECTOR(15 DOWNTO 0);
-            io_events      : IN  STD_LOGIC_VECTOR(15 DOWNTO 0);
+            clk            : IN STD_LOGIC;
+            reset          : IN STD_LOGIC;
+            z_flag         : OUT STD_LOGIC;
+            debug_mode     : IN STD_LOGIC;
+            debug_step     : IN STD_LOGIC;
+            sip            : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+            sop            : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            dpcr           : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            dpcr_load      : OUT STD_LOGIC;
+            io_sw          : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+            io_events      : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
             io_led         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
             io_hex         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-            io_period      : IN  STD_LOGIC_VECTOR(15 DOWNTO 0);
+            io_period      : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
             io_event_clear : OUT STD_LOGIC;
-            pc_out     : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-            rz_out     : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-            opcode_out : OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
-            am_out     : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
-            state_out  : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)
+            pc_out         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            rz_out         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            opcode_out     : OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
+            am_out         : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+            state_out      : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)
         );
     END COMPONENT;
 
     COMPONENT recop_ni IS
         PORT
         (
-            clock     : IN STD_LOGIC;
-            reset     : IN STD_LOGIC;
-            dpcr_in   : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-            dpcr_load : IN STD_LOGIC;
-            sip_out   : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            clock      : IN STD_LOGIC;
+            reset      : IN STD_LOGIC;
+            dpcr_in    : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+            dpcr_load  : IN STD_LOGIC;
+            sip_out    : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
             period_out : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-            send      : OUT tdma_min_port;
-            recv      : IN tdma_min_port
+            send       : OUT tdma_min_port;
+            recv       : IN tdma_min_port
         );
     END COMPONENT;
 
@@ -216,7 +215,7 @@ ARCHITECTURE rtl OF top_level IS
         );
     END COMPONENT;
 
-    COMPONENT system_pll IS
+    COMPONENT system_pll_10 IS
         PORT
         (
             refclk   : IN STD_LOGIC;
@@ -264,12 +263,11 @@ ARCHITECTURE rtl OF top_level IS
 BEGIN
 
     -- ===== Clock generation =====
-    -- 50 MHz CLOCK_50 -> 25 MHz sys_clk via PLL.
-    -- PLL's rst is active-high; tie to raw KEY(0)-derived reset so the
-    -- PLL re-locks if the user presses the reset button.
+    -- CLOCK_50 (50 MHz) -> system_pll_10 -> 10 MHz sys_clk.
+    -- PLL rst is active-high; tie to KEY(0) reset so PLL re-locks on reset.
     key0_reset <= NOT KEY(0);
 
-    U_PLL : system_pll PORT MAP
+    U_PLL : system_pll_10 PORT MAP
     (
         refclk   => CLOCK_50,
         rst      => key0_reset,
@@ -277,8 +275,7 @@ BEGIN
         locked   => pll_locked
     );
 
-    -- Hold the design in reset until both KEY(0) is released AND the PLL
-    -- has locked. Prevents downstream FFs from starting on garbage cycles.
+    -- Hold design in reset until KEY(0) released AND PLL locked.
     reset      <= key0_reset OR NOT pll_locked;
     -- FSM-freeze single-stepping needs a dedicated switch, and the W5 board
     -- map has none spare, so freeze is disabled for the application build.
@@ -357,34 +354,35 @@ BEGIN
 
     -- ===== ReCOP core =====
     U_RECOP : recop PORT
-    MAP (
-    clk        => sys_clk,
-    reset      => reset,
-    z_flag     => z_flag_sig,
-    debug_mode => debug_mode,
-    debug_step => debug_step,
-    sip        => sip_sig,
-    sop        => sop_sig,
-    dpcr       => dpcr_sig,
-    dpcr_load  => dpcr_load_sig,
+    MAP
+    (
+    clk            => sys_clk,
+    reset          => reset,
+    z_flag         => z_flag_sig,
+    debug_mode     => debug_mode,
+    debug_step     => debug_step,
+    sip            => sip_sig,
+    sop            => sop_sig,
+    dpcr           => dpcr_sig,
+    dpcr_load      => dpcr_load_sig,
     io_sw          => io_sw_sig,
     io_events      => io_events_sig,
     io_led         => io_led_sig,
     io_hex         => io_hex_sig,
     io_period      => io_period_sig,
     io_event_clear => io_clear_sig,
-    pc_out     => pc_sig,
-    rz_out     => rz_sig,
-    opcode_out => opcode_sig,
-    am_out     => am_sig,
-    state_out  => state_sig
+    pc_out         => pc_sig,
+    rz_out         => rz_sig,
+    opcode_out     => opcode_sig,
+    am_out         => am_sig,
+    state_out      => state_sig
     );
 
     -- ===== Network interface (ReCOP <-> NoC port 0) =====
     U_NI : recop_ni PORT
     MAP (
-    clock     => sys_clk,
-    reset     => reset,
+    clock      => sys_clk,
+    reset      => reset,
     dpcr_in    => dpcr_sig,
     dpcr_load  => dpcr_load_sig,
     sip_out    => sip_sig,
@@ -394,11 +392,9 @@ BEGIN
     );
 
     -- ===== ASPs (verified in sim through W2.3) =====
-    -- Override clock_hz so the DDS SR_DIV table matches the actual 25 MHz
-    -- sys_clk. Without this, the ADC would assume 50 MHz and emit at half
-    -- the configured sample rate (SR=11 -> 24 kHz instead of 48 kHz, etc).
+    -- Override clock_hz so the DDS SR_DIV table matches the 10 MHz sys_clk.
     U_ADC : adc_asp
-    GENERIC MAP(clock_hz => 25_000_000)
+    GENERIC MAP(clock_hz => 10_000_000)
     PORT
     MAP (
     clock => sys_clk,
@@ -482,7 +478,7 @@ BEGIN
     H_S : hex_to_7seg PORT
     MAP (hex_in => '0' & state_sig, seg_out => state_seg);
     HEX4 <= state_seg WHEN SW(7) = '1' ELSE
-        (OTHERS => '1');
+        (OTHERS         => '1');
     HEX5 <= (OTHERS => '1');
 
 END ARCHITECTURE rtl;
