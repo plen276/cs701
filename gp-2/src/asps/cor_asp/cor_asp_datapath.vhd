@@ -39,7 +39,10 @@ ENTITY cor_asp_datapath IS
     (
         DATA_WIDTH : INTEGER := 16;
         ADDR_WIDTH : INTEGER := 8;
-        ACC_WIDTH  : INTEGER := 32;
+        -- 40-bit accumulator: signed products are up to ~2^30; summed over
+        -- n=window/2 taps (32 for window=64) the autocorrelation peak reaches
+        -- ~2^34, which overflows a 32-bit accumulator. 40 bits gives headroom.
+        ACC_WIDTH  : INTEGER := 40;
         N_WIDTH    : INTEGER := 8   -- n = window/2, up to 2^N_WIDTH
     );
     PORT
@@ -98,8 +101,11 @@ ARCHITECTURE rtl OF cor_asp_datapath IS
     SIGNAL mul_valid_r     : STD_LOGIC; -- aligned with prod_reg
     SIGNAL acc_valid_r     : STD_LOGIC; -- last accumulate happened
 
-    SIGNAL prod_reg        : UNSIGNED(2*DATA_WIDTH - 1 DOWNTO 0);
-    SIGNAL acc_reg         : UNSIGNED(ACC_WIDTH - 1 DOWNTO 0);
+    -- Samples are signed two's-complement (the ADC/AVG sine swings negative),
+    -- so the correlation MUST use signed multiply + signed accumulate or the
+    -- autocorrelation is garbage (negative half-cycles read as large positives).
+    SIGNAL prod_reg        : SIGNED(2*DATA_WIDTH - 1 DOWNTO 0);
+    SIGNAL acc_reg         : SIGNED(ACC_WIDTH - 1 DOWNTO 0);
     SIGNAL result_reg      : STD_LOGIC_VECTOR(15 DOWNTO 0);
     SIGNAL result_full_reg : STD_LOGIC_VECTOR(ACC_WIDTH - 1 DOWNTO 0);
     SIGNAL result_valid_r  : STD_LOGIC;
@@ -173,7 +179,7 @@ BEGIN
 
                 -- Stage MUL : product of the RAM outputs
                 IF ag_valid_r = '1' THEN
-                    prod_reg <= unsigned(rd_data_a) * unsigned(rd_data_b);
+                    prod_reg <= signed(rd_data_a) * signed(rd_data_b);
                 END IF;
 
                 -- Stage ACC : accumulate

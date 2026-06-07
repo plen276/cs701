@@ -39,8 +39,16 @@ begin
 				out_min <= '0';
 				out_max <= '0';
 			else
+				out_min <= '0';
+				out_max <= '0';
+
 				if conf_en = '1' then
 					hysteresis := set_hysteresis;
+					above_base := true;
+					new_sample := 0;
+					send_output := false;
+					current_pick <= -2147483647;
+					output <= (others => '0');
 				elsif ld_en = '1' then
 					new_sample := to_integer(signed(input));
 					
@@ -67,9 +75,6 @@ begin
 						
 						output <= std_logic_vector(to_signed(current_pick, 16));
 						send_output := false;
-					else
-						out_min <= '0';
-						out_max <= '0';
 					end if;
 					
 					-- Check if new sample is more max/min than current pick

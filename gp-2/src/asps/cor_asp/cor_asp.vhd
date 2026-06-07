@@ -34,7 +34,7 @@ ENTITY cor_asp IS
     (
         DATA_WIDTH       : INTEGER := 16;
         ADDR_WIDTH       : INTEGER := 8;
-        ACC_WIDTH        : INTEGER := 32;
+        ACC_WIDTH        : INTEGER := 40;  -- signed-acc headroom (see cor_asp_datapath)
         N_WIDTH          : INTEGER := 8;
         MY_NODE_ID       : STD_LOGIC_VECTOR(3 DOWNTO 0) := NODE_ID_COR;
         DEFAULT_DEST     : STD_LOGIC_VECTOR(3 DOWNTO 0) := NODE_ID_PD;
@@ -111,7 +111,7 @@ ARCHITECTURE structural OF cor_asp IS
         GENERIC (
             DATA_WIDTH : INTEGER := 16;
             ADDR_WIDTH : INTEGER := 8;
-            ACC_WIDTH  : INTEGER := 32;
+            ACC_WIDTH  : INTEGER := 40;
             N_WIDTH    : INTEGER := 8
         );
         PORT (

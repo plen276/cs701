@@ -33,13 +33,14 @@ architecture beh of PkMem is
 
 	signal lifetime : integer := 2147483647;
 	signal counter : integer := 0;
+	signal period_between_peaks : integer := 0;
 	
 begin
 	process(clock)
 		variable values_var : values_array := (others => (others => '0'));
 		variable ages_var : ages_array := (others => 0);
 		variable size_var : integer := 0;
-		variable avg_var : integer := 0;
+		variable have_previous_peak : boolean := false;
 	begin
 		if rising_edge(clock) then
 			if reset = '1' then -- Reset
@@ -51,82 +52,94 @@ begin
 					ages_var(i) := 0;
 					size <= 0;
 					size_var := 0;
-					avg_var := 0;
 					lifetime <= 2147483647;
 					counter <= 0;
+					period_between_peaks <= 0;
+					have_previous_peak := false;
 				end loop;
 				
 				-- Clear outputs
 				output_v <= (others => '0');
 				output_a <= 0;
+				output_a_avg <= 0;
 			else
 				if conf_en = '1' then
 					lifetime <= set_lifetime;
-				elsif wren = '1' then -- Write new value
-					-- Shift values
-					for i in 1 to 15 loop
-						values_var(i) := values(i-1);
-						ages_var(i) := ages(i-1);
-					end loop;
-					
-					-- Insert new value
-					values_var(0) := input;
-					ages_var(0) := counter;
-					-- Move size_var
-					if size_var < 16 then
-						size_var := size_var + 1;
-					end if;
-					
-					-- Reset counter
-					counter <= 0;
-				else
-					counter <= counter + 1;
-				end if;
-				
-				-- If there are entries
-				if size_var > 0 then
-					-- Check for out of lifetime values
-					if ages_var(size_var - 1) > lifetime then
-						-- Clear oldest
-						values_var(size_var - 1) := (others => '0');
-						ages_var(size_var - 1) := 0;
-						-- Move size_var
-						if size_var > 0 then
-							size_var := size_var - 1;
-						end if;
-					
-					else -- Else tick ages
-						for i in 0 to 15 loop
-							ages_var(i) := ages_var(i) + 1;
-						end loop;
-					
-					end if;
-					
-				end if;
-				
-				-- Calculate average time between peaks
-				if size_var > 0 then
-					avg_var := 0;
 					for i in 0 to 15 loop
-						if i < size_var then
-							avg_var := avg_var + ages_var(i);
-						end if;
-						
+						values(i) <= (others => '0');
+						values_var(i) := (others => '0');
+						ages(i) <= 0;
+						ages_var(i) := 0;
 					end loop;
-					avg_var := avg_var/size_var;
+					size <= 0;
+					size_var := 0;
+					counter <= 0;
+					period_between_peaks <= 0;
+					have_previous_peak := false;
+					output_v <= (others => '0');
+					output_a <= 0;
+					output_a_avg <= 0;
+				else
+					if wren = '1' then -- Write new value
+						-- Shift values
+						for i in 1 to 15 loop
+							values_var(i) := values(i-1);
+							ages_var(i) := ages(i-1);
+						end loop;
+
+						-- Insert new value
+						values_var(0) := input;
+						ages_var(0) := counter;
+						if have_previous_peak then
+							period_between_peaks <= counter;
+						else
+							period_between_peaks <= 0;
+							have_previous_peak := true;
+						end if;
+						-- Move size_var
+						if size_var < 16 then
+							size_var := size_var + 1;
+						end if;
+
+						-- Reset counter
+						counter <= 0;
+					else
+						counter <= counter + 1;
+					end if;
+
+					-- If there are entries
+					if size_var > 0 then
+						-- Check for out of lifetime values
+						if ages_var(size_var - 1) > lifetime then
+							-- Clear oldest
+							values_var(size_var - 1) := (others => '0');
+							ages_var(size_var - 1) := 0;
+							-- Move size_var
+							if size_var > 0 then
+								size_var := size_var - 1;
+							end if;
+
+						else -- Else tick ages
+							for i in 0 to 15 loop
+								ages_var(i) := ages_var(i) + 1;
+							end loop;
+
+						end if;
+
+					end if;
+
+					-- Update signals
+					for i in 0 to 15 loop
+						values(i) <= values_var(i);
+						ages(i) <= ages_var(i);
+					end loop;
+
+					-- Output values
+					size <= size_var;
+					output_v <= values(select_v);
+					output_a <= ages(select_a);
+					output_a_avg <= period_between_peaks;
 				end if;
-				
-				-- Update signals
-				for i in 0 to 15 loop
-					values(i) <= values_var(i);
-					ages(i) <= ages_var(i);
-				end loop;
-				
-				-- Output values
-				size <= size_var;
-				output_v <= values(select_v);
-				output_a <= ages(select_a);
-				output_a_avg <= avg_var;
 			end if;
 			
 		end if;

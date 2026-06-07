@@ -102,6 +102,15 @@ BEGIN
 				seq_min_ld      <= '0';
 
 			ELSE
+				base_conf     <= '0';
+				base_ld       <= '0';
+				find_conf     <= '0';
+				find_ld       <= '0';
+				max_conf      <= '0';
+				min_conf      <= '0';
+				seq_max_ld    <= '0';
+				seq_min_ld    <= '0';
+
 				IF recv(31 DOWNTO 28) = "1001" THEN -- If configuration packet
 
 					-- Set addr from 'Next' field
@@ -133,6 +142,10 @@ BEGIN
 					END IF;
 
 					-- Tell all components to configure
+					max_mem_index   <= 0;
+					min_mem_index   <= 0;
+					global_max      <= (OTHERS => '0');
+					global_min      <= (OTHERS => '0');
 					base_reset      <= '0';
 					base_conf       <= '1';
 					base_rate       <= adj_rate;

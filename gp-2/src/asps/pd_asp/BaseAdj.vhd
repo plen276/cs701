@@ -31,12 +31,14 @@ begin
 			else
 				if conf_en = '1' then
 					adj_rate := set_adj_rate;
+					new_sample := 0;
+					baseline <= 0;
+					output <= 0;
 				elsif ld_in = '1' then
 					new_sample := to_integer(signed(input));
 					baseline <= ((baseline * (adj_rate - 1)) + new_sample)/adj_rate;
+					output <= baseline;
 				end if;
-				
-				output <= baseline;
 			end if;
 			
 		end if;
