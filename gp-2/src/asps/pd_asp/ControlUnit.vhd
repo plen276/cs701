@@ -59,10 +59,17 @@ ARCHITECTURE beh OF ControlUnit IS
 	SIGNAL min_mem_index : INTEGER RANGE 0 TO 15 := 0;
 	SIGNAL global_max    : STD_LOGIC_VECTOR(15 DOWNTO 0);
 	SIGNAL global_min    : STD_LOGIC_VECTOR(15 DOWNTO 0);
+
+	-- Clocks between successive result packets. The result emitter is a
+	-- one-shot; this gap lets the NoC port FIFO drain (the 8-port
+	-- TDMA-MIN delivers one packet per node every 8 slots) so the fabric
+	-- is never flooded. Results change slowly, so a wide gap costs nothing.
+	CONSTANT GAP_CYCLES  : INTEGER := 63;
 BEGIN
 	PROCESS (clock)
 		VARIABLE shift_var : unsigned(15 DOWNTO 0)        := "0000000000000001";
 		VARIABLE state     : STD_LOGIC_VECTOR(1 DOWNTO 0) := "00";
+		VARIABLE tx_gap    : INTEGER RANGE 0 TO GAP_CYCLES := 0;
 	BEGIN
 		IF rising_edge(clock) THEN
 			IF reset = '1' THEN
@@ -73,6 +80,7 @@ BEGIN
 				send       <= (OTHERS => '0');
 				shift_var := "0000000000000001";
 				state     := "00";
+				tx_gap    := 0;
 				max_mem_index   <= 0;
 				min_mem_index   <= 0;
 				global_max      <= (OTHERS => '0');
@@ -222,35 +230,33 @@ BEGIN
 					seq_min_ld <= '0';
 				END IF;
 
-				CASE state IS
-					WHEN "00"                    => -- Enable off
-						send(31 DOWNTO 0) <= (OTHERS => '0');
-						state := "00";
-					WHEN "01" => -- Send global max
-						send <= "1000" & "01" & "0000000000" & global_max;
-						-- send(31 downto 28) <= "1000";
-						-- send(27 downto 26) <= "01";
-						-- send(29 downto 16) <= (others => '0');
-						-- send(15 downto 0) <= global_max;
-						state := "10";
-					WHEN "10" => -- Send global min
-						send <= "1000" & "10" & "0000000000" & global_min;
-						-- send(31 downto 28) <= "1000";
-						-- send(27 downto 26) <= "10";
-						-- send(29 downto 16) <= (others => '0');
-						-- send(15 downto 0) <= global_min;
-						state := "11";
-					WHEN "11" => -- Send time between peaks
-						send <= "1000" & "11" & "0000000000" & STD_LOGIC_VECTOR(to_unsigned(peak_time, 16));
-						-- send(31 DOWNTO 28) <= "1000";
-						-- send(27 DOWNTO 26) <= "11";
-						-- send(29 DOWNTO 16) <= (OTHERS => '0');
-						-- send(15 DOWNTO 0)  <= STD_LOGIC_VECTOR(to_unsigned(peak_time, 16)); -- Change to time between peaks
-						state := "01";
-					WHEN OTHERS                  =>
-						send(31 DOWNTO 0) <= (OTHERS => '0');
-						state := "00";
-				END CASE;
+				-- Result output (one-shot + gap). At most one packet every
+				-- GAP_CYCLES+1 clocks so the NoC FIFO drains between packets;
+				-- send is high for exactly one cycle per packet and 0 during
+				-- the gap. (The previous version drove a new packet every
+				-- clock and flooded the fabric.) Packet format and the
+				-- max/min/period rotation are unchanged: type 1000, the
+				-- 2-bit kind tag in bits[27:26], value in bits[15:0].
+				IF state = "00" THEN
+					send <= (OTHERS => '0');               -- disabled: stay quiet
+				ELSIF tx_gap = 0 THEN
+					CASE state IS
+						WHEN "01" => -- global max
+							send  <= "1000" & "01" & "0000000000" & global_max;
+							state := "10";
+						WHEN "10" => -- global min
+							send  <= "1000" & "10" & "0000000000" & global_min;
+							state := "11";
+						WHEN OTHERS => -- "11": time between peaks
+							send  <= "1000" & "11" & "0000000000" &
+							         STD_LOGIC_VECTOR(to_unsigned(peak_time, 16));
+							state := "01";
+					END CASE;
+					tx_gap := GAP_CYCLES;
+				ELSE
+					send   <= (OTHERS => '0');             -- inter-packet gap
+					tx_gap := tx_gap - 1;
+				END IF;
 
 			END IF;
 

@@ -5,7 +5,7 @@
 ; packets over the TDMA-MIN NoC, in consumer-before-producer
 ; order, enabling the ADC source LAST (per project brief):
 ;
-;     ADC(1) -> AVG(2) -> COR(3) -> PD(4)   [results -> ReCOP(0)]
+;     ADC(1) -> AVG(2) -> COR(3) -> PD(4)   [PD results -> Nios(5)]
 ;
 ; A packet is the 32-bit DPCR written by DATACALL (immediate form):
 ;     DPCR(31:16) = Rx register   (TYPE | DEST | NEXT | MODE ...)
@@ -21,13 +21,12 @@
 
 start   NOOP                  ; settle one cycle out of reset
 
-; ---- PD-ASP (id 4): detection params, output dest = ReCOP(0) ----
-;   upper 0x9400 = 1001(Conf-PD) 0100(dest=PD) 0000(Next=ReCOP) 0000(En=0)
+; ---- PD-ASP (id 4): detection params, output dest = Nios(5), enabled
+;   upper 0x9452 = 1001(Conf-PD) 0100(dest=PD) 0101(Next=Nios) En=1
 ;   lower 0x074A = adj_rate 2^7, hysteresis 10, lifetime 2^10
-;   En is kept 0: PD ingests data but does NOT drive the NoC yet
-;   (its result-send framing needs PD-side alignment first). To turn
-;   PD output on once aligned, change the upper word to 0x9402.
-        LDR R1, #0x9400
+;   PD now emits one-shot result packets (max/min/period) to the Nios
+;   monitor on port 5. (To disable PD output, use 0x9450 instead.)
+        LDR R1, #0x9452
         DATACALL R1 #0x074A
         NOOP
         NOOP
@@ -60,10 +59,10 @@ start   NOOP                  ; settle one cycle out of reset
         NOOP
         NOOP
 
-; ---- Idle loop: mirror any packet returned to ReCOP onto SOP -----
-; SIP holds the low 16 bits of the last packet delivered to port 0
-; (PD results, once PD output is enabled). Shown on HEX3..0 when
-; SW(1) = '1'.
+; ---- Idle loop ---------------------------------------------------
+; PD results now flow to the Nios (port 5), which prints them over
+; JTAG-UART. ReCOP just idles here after configuring the pipeline;
+; SIP/SOP are only exercised if something is addressed back to port 0.
 poll    LSIP R2
         SSOP R2
         JMP poll
