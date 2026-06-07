@@ -48,6 +48,13 @@ ENTITY recop_ni IS
         dpcr_load : IN  STD_LOGIC;
         sip_out   : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
 
+        -- Isolated PD period (2b): latches only Data-Audio packets whose
+        -- sub-tag (bits 27:26) = "11" (PD time-between-peaks). Lets the
+        -- ReCOP program read a STABLE period count, instead of the
+        -- max/min/period values PD cycles through on SIP. Surfaced to the
+        -- program at MMIO $FF4 (see datapath.vhd).
+        period_out : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+
         -- NoC-facing (connects to TdmaMinInterface)
         send      : OUT tdma_min_port;
         recv      : IN  tdma_min_port
@@ -58,6 +65,7 @@ ARCHITECTURE rtl OF recop_ni IS
 
     SIGNAL dpcr_load_prev : STD_LOGIC := '0';
     SIGNAL sip_reg     : STD_LOGIC_VECTOR(15 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL period_reg  : STD_LOGIC_VECTOR(15 DOWNTO 0) := (OTHERS => '0');
 
 BEGIN
 
@@ -83,13 +91,23 @@ BEGIN
     BEGIN
         IF rising_edge(clock) THEN
             IF reset = '1' THEN
-                sip_reg <= (OTHERS => '0');
-            ELSIF recv.data(31) = '1' THEN
-                sip_reg <= recv.data(15 DOWNTO 0);
+                sip_reg    <= (OTHERS => '0');
+                period_reg <= (OTHERS => '0');
+            ELSE
+                -- Generic: latch any valid packet's low 16 bits to SIP.
+                IF recv.data(31) = '1' THEN
+                    sip_reg <= recv.data(15 DOWNTO 0);
+                END IF;
+                -- 2b: latch period only (Data-Audio type + sub-tag "11").
+                IF recv.data(31 DOWNTO 28) = "1000"
+                   AND recv.data(27 DOWNTO 26) = "11" THEN
+                    period_reg <= recv.data(15 DOWNTO 0);
+                END IF;
             END IF;
         END IF;
     END PROCESS recv_latch;
 
-    sip_out <= sip_reg;
+    sip_out    <= sip_reg;
+    period_out <= period_reg;
 
 END ARCHITECTURE rtl;

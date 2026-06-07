@@ -28,25 +28,33 @@ USE work.recop_types.ALL;
 ENTITY recop IS
     PORT
     (
-        clk        : IN STD_LOGIC;
-        reset      : IN STD_LOGIC;
-        z_flag     : OUT STD_LOGIC;
+        clk            : IN STD_LOGIC;
+        reset          : IN STD_LOGIC;
+        z_flag         : OUT STD_LOGIC;
 
-        debug_mode : IN STD_LOGIC;
-        debug_step : IN STD_LOGIC;
+        debug_mode     : IN STD_LOGIC;
+        debug_step     : IN STD_LOGIC;
 
         -- NoC-facing I/O (new in GP-2)
-        sip        : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
-        sop        : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-        dpcr       : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-        dpcr_load  : OUT STD_LOGIC;
+        sip            : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+        sop            : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+        dpcr           : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+        dpcr_load      : OUT STD_LOGIC;
+
+        -- Memory-mapped board I/O (new in GP-2 W5) — see datapath.vhd
+        io_sw          : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+        io_events      : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+        io_led         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+        io_hex         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+        io_period      : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+        io_event_clear : OUT STD_LOGIC;
 
         -- Debug / display outputs (unchanged from GP-1)
-        pc_out     : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-        rz_out     : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-        opcode_out : OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
-        am_out     : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
-        state_out  : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)
+        pc_out         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+        rz_out         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+        opcode_out     : OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
+        am_out         : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+        state_out      : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)
     );
 END ENTITY recop;
 
@@ -118,35 +126,41 @@ ARCHITECTURE structural OF recop IS
     COMPONENT datapath IS
         PORT
         (
-            clk           : IN STD_LOGIC;
-            reset         : IN STD_LOGIC;
-            pm_data       : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
-            pc_load       : IN STD_LOGIC;
-            ir_load       : IN STD_LOGIC;
-            op_load       : IN STD_LOGIC;
-            pc_src_sel    : IN STD_LOGIC;
-            alu_operation : IN STD_LOGIC_VECTOR(2 DOWNTO 0);
-            alu_op1_sel   : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-            alu_op2_sel   : IN STD_LOGIC;
-            clr_z_flag    : IN STD_LOGIC;
-            rf_input_sel  : IN STD_LOGIC_VECTOR(2 DOWNTO 0);
-            ld_r          : IN STD_LOGIC;
-            dm_wren       : IN STD_LOGIC;
-            dm_addr_sel   : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-            dm_data_sel   : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
-            sip           : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
-            ssop_load     : IN STD_LOGIC;
-            sop           : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-            dpcr_load     : IN STD_LOGIC;
-            dpcr_data_sel : IN STD_LOGIC;
-            dpcr          : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-            am            : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
-            opcode        : OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
-            z_flag        : OUT STD_LOGIC;
-            rz_zero       : OUT STD_LOGIC;
-            rz_out        : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-            rx_out        : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-            pc_out        : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
+            clk            : IN STD_LOGIC;
+            reset          : IN STD_LOGIC;
+            pm_data        : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+            pc_load        : IN STD_LOGIC;
+            ir_load        : IN STD_LOGIC;
+            op_load        : IN STD_LOGIC;
+            pc_src_sel     : IN STD_LOGIC;
+            alu_operation  : IN STD_LOGIC_VECTOR(2 DOWNTO 0);
+            alu_op1_sel    : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+            alu_op2_sel    : IN STD_LOGIC;
+            clr_z_flag     : IN STD_LOGIC;
+            rf_input_sel   : IN STD_LOGIC_VECTOR(2 DOWNTO 0);
+            ld_r           : IN STD_LOGIC;
+            dm_wren        : IN STD_LOGIC;
+            dm_addr_sel    : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+            dm_data_sel    : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+            sip            : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+            ssop_load      : IN STD_LOGIC;
+            sop            : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            dpcr_load      : IN STD_LOGIC;
+            dpcr_data_sel  : IN STD_LOGIC;
+            dpcr           : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            io_sw          : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+            io_events      : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+            io_led         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            io_hex         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            io_period      : IN STD_LOGIC_VECTOR(15 DOWNTO 0);
+            io_event_clear : OUT STD_LOGIC;
+            am             : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+            opcode         : OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
+            z_flag         : OUT STD_LOGIC;
+            rz_zero        : OUT STD_LOGIC;
+            rz_out         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            rx_out         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            pc_out         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
         );
     END COMPONENT;
 
@@ -201,35 +215,41 @@ BEGIN
     DP : datapath PORT
     MAP
     (
-    clk           => clk,
-    reset         => reset,
-    pm_data       => pm_data,
-    pc_load       => pc_load,
-    ir_load       => ir_load,
-    op_load       => op_load,
-    pc_src_sel    => pc_src_sel,
-    alu_operation => alu_operation,
-    alu_op1_sel   => alu_op1_sel,
-    alu_op2_sel   => alu_op2_sel,
-    clr_z_flag    => clr_z_flag,
-    rf_input_sel  => rf_input_sel,
-    ld_r          => ld_r,
-    dm_wren       => dm_wren,
-    dm_addr_sel   => dm_addr_sel,
-    dm_data_sel   => dm_data_sel,
-    sip           => sip,
-    ssop_load     => ssop_load,
-    sop           => sop,
-    dpcr_load     => dpcr_load_sig,
-    dpcr_data_sel => dpcr_data_sel,
-    dpcr          => dpcr,
-    am            => am,
-    opcode        => opcode,
-    z_flag        => z_flag_sig,
-    rz_zero       => rz_zero,
-    rz_out        => rz_sig,
-    rx_out        => OPEN,
-    pc_out        => pc_sig
+    clk            => clk,
+    reset          => reset,
+    pm_data        => pm_data,
+    pc_load        => pc_load,
+    ir_load        => ir_load,
+    op_load        => op_load,
+    pc_src_sel     => pc_src_sel,
+    alu_operation  => alu_operation,
+    alu_op1_sel    => alu_op1_sel,
+    alu_op2_sel    => alu_op2_sel,
+    clr_z_flag     => clr_z_flag,
+    rf_input_sel   => rf_input_sel,
+    ld_r           => ld_r,
+    dm_wren        => dm_wren,
+    dm_addr_sel    => dm_addr_sel,
+    dm_data_sel    => dm_data_sel,
+    sip            => sip,
+    ssop_load      => ssop_load,
+    sop            => sop,
+    dpcr_load      => dpcr_load_sig,
+    dpcr_data_sel  => dpcr_data_sel,
+    dpcr           => dpcr,
+    io_sw          => io_sw,
+    io_events      => io_events,
+    io_led         => io_led,
+    io_hex         => io_hex,
+    io_period      => io_period,
+    io_event_clear => io_event_clear,
+    am             => am,
+    opcode         => opcode,
+    z_flag         => z_flag_sig,
+    rz_zero        => rz_zero,
+    rz_out         => rz_sig,
+    rx_out         => OPEN,
+    pc_out         => pc_sig
     );
 
     PM : prog_mem PORT

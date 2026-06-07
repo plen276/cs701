@@ -60,6 +60,12 @@ USE work.TdmaMinTypes.ALL;
 -- ============================================================
 
 ENTITY top_level IS
+    GENERIC (
+        -- Defaults are board values; a testbench overrides them small so
+        -- key debounce and HEX refresh happen in a few cycles, not ms.
+        DEB_TICKS   : NATURAL := 65535;     -- debounce sample period - 1 (~2.6 ms @25 MHz)
+        HEX_REFRESH : NATURAL := 6_250_000  -- HEX latch period - 1 (~4 Hz @25 MHz)
+    );
     PORT
     (
         CLOCK_50 : IN STD_LOGIC;
@@ -94,6 +100,25 @@ ARCHITECTURE rtl OF top_level IS
     SIGNAL dpcr_sig      : STD_LOGIC_VECTOR(31 DOWNTO 0);
     SIGNAL dpcr_load_sig : STD_LOGIC;
 
+    -- ===== Memory-mapped board I/O (W5) =====
+    SIGNAL io_sw_sig     : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL io_events_sig : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL io_led_sig    : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL io_hex_sig    : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL io_period_sig : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL io_clear_sig  : STD_LOGIC;
+    -- KEY debounce (sampled at DEB_TICKS): sticky press flags
+    -- bit0 = KEY1 (mode), bit1 = KEY2 (ack)
+    SIGNAL deb_cnt       : UNSIGNED(15 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL key1_prev     : STD_LOGIC := '1';
+    SIGNAL key2_prev     : STD_LOGIC := '1';
+    SIGNAL events_reg    : STD_LOGIC_VECTOR(1 DOWNTO 0) := "00";
+    -- HEX display throttle (~4 Hz): a slow snapshot so fast values are readable
+    SIGNAL ref_cnt       : UNSIGNED(23 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL hex_disp      : STD_LOGIC_VECTOR(15 DOWNTO 0) := (OTHERS => '0');
+    -- Debug-display segment source for HEX4 (FSM state)
+    SIGNAL state_seg     : STD_LOGIC_VECTOR(6 DOWNTO 0);
+
     -- ===== ReCOP debug surface =====
     SIGNAL pc_sig        : STD_LOGIC_VECTOR(15 DOWNTO 0);
     SIGNAL rz_sig        : STD_LOGIC_VECTOR(15 DOWNTO 0);
@@ -122,6 +147,12 @@ ARCHITECTURE rtl OF top_level IS
             sop        : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
             dpcr       : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
             dpcr_load  : OUT STD_LOGIC;
+            io_sw          : IN  STD_LOGIC_VECTOR(15 DOWNTO 0);
+            io_events      : IN  STD_LOGIC_VECTOR(15 DOWNTO 0);
+            io_led         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            io_hex         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            io_period      : IN  STD_LOGIC_VECTOR(15 DOWNTO 0);
+            io_event_clear : OUT STD_LOGIC;
             pc_out     : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
             rz_out     : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
             opcode_out : OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
@@ -138,6 +169,7 @@ ARCHITECTURE rtl OF top_level IS
             dpcr_in   : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
             dpcr_load : IN STD_LOGIC;
             sip_out   : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            period_out : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
             send      : OUT tdma_min_port;
             recv      : IN tdma_min_port
         );
@@ -248,7 +280,10 @@ BEGIN
     -- Hold the design in reset until both KEY(0) is released AND the PLL
     -- has locked. Prevents downstream FFs from starting on garbage cycles.
     reset      <= key0_reset OR NOT pll_locked;
-    debug_mode <= SW(0);
+    -- FSM-freeze single-stepping needs a dedicated switch, and the W5 board
+    -- map has none spare, so freeze is disabled for the application build.
+    -- KEY(3)/debug_step wiring is kept (inert while debug_mode = '0').
+    debug_mode <= '0';
 
     -- KEY(3) rising-edge detector -> single-cycle debug_step pulse
     step_detect : PROCESS (sys_clk)
@@ -262,6 +297,64 @@ BEGIN
         END IF;
     END PROCESS step_detect;
 
+    -- ===== Board input to ReCOP (memory-mapped) =====
+    -- KEY debounce + sticky event latch.
+    -- The keys are sampled only once per DEB_TICKS cycles (~2.6 ms on the
+    -- board). Bounce (sub-ms) settles between samples, so one physical press
+    -- registers exactly one event. A press (active-low: high-then-low across
+    -- two samples) sets a sticky flag the ReCOP program reads at $FF1 and
+    -- clears by writing $FF1 (io_clear_sig). KEY1=cycle mode, KEY2=ack.
+    debounce : PROCESS (sys_clk)
+    BEGIN
+        IF rising_edge(sys_clk) THEN
+            IF reset = '1' THEN
+                deb_cnt    <= (OTHERS => '0');
+                events_reg <= "00";
+                key1_prev  <= '1';
+                key2_prev  <= '1';
+            ELSE
+                IF io_clear_sig = '1' THEN
+                    events_reg <= "00";
+                END IF;
+                IF deb_cnt >= DEB_TICKS THEN
+                    deb_cnt <= (OTHERS => '0');
+                    -- sample tick: detect a fresh press, then re-arm on release
+                    IF key1_prev = '1' AND KEY(1) = '0' THEN
+                        events_reg(0) <= '1';
+                    END IF;
+                    IF key2_prev = '1' AND KEY(2) = '0' THEN
+                        events_reg(1) <= '1';
+                    END IF;
+                    key1_prev <= KEY(1);
+                    key2_prev <= KEY(2);
+                ELSE
+                    deb_cnt <= deb_cnt + 1;
+                END IF;
+            END IF;
+        END IF;
+    END PROCESS debounce;
+
+    -- Switches presented as a 16-bit word at $FF0.
+    io_sw_sig     <= "000000" & SW;
+    io_events_sig <= "00000000000000" & events_reg;
+
+    -- HEX display throttle: latch io_hex into hex_disp at ~HEX_REFRESH so a
+    -- fast-changing value is sampled slowly enough to read on the 7-seg.
+    hex_throttle : PROCESS (sys_clk)
+    BEGIN
+        IF rising_edge(sys_clk) THEN
+            IF reset = '1' THEN
+                ref_cnt  <= (OTHERS => '0');
+                hex_disp <= (OTHERS => '0');
+            ELSIF ref_cnt >= HEX_REFRESH THEN
+                ref_cnt  <= (OTHERS => '0');
+                hex_disp <= io_hex_sig;
+            ELSE
+                ref_cnt <= ref_cnt + 1;
+            END IF;
+        END IF;
+    END PROCESS hex_throttle;
+
     -- ===== ReCOP core =====
     U_RECOP : recop PORT
     MAP (
@@ -274,6 +367,12 @@ BEGIN
     sop        => sop_sig,
     dpcr       => dpcr_sig,
     dpcr_load  => dpcr_load_sig,
+    io_sw          => io_sw_sig,
+    io_events      => io_events_sig,
+    io_led         => io_led_sig,
+    io_hex         => io_hex_sig,
+    io_period      => io_period_sig,
+    io_event_clear => io_clear_sig,
     pc_out     => pc_sig,
     rz_out     => rz_sig,
     opcode_out => opcode_sig,
@@ -286,11 +385,12 @@ BEGIN
     MAP (
     clock     => sys_clk,
     reset     => reset,
-    dpcr_in   => dpcr_sig,
-    dpcr_load => dpcr_load_sig,
-    sip_out   => sip_sig,
-    send      => sends(0),
-    recv      => recvs(0)
+    dpcr_in    => dpcr_sig,
+    dpcr_load  => dpcr_load_sig,
+    sip_out    => sip_sig,
+    period_out => io_period_sig,
+    send       => sends(0),
+    recv       => recvs(0)
     );
 
     -- ===== ASPs (verified in sim through W2.3) =====
@@ -358,15 +458,16 @@ BEGIN
     );
 
     -- ===== Board observables =====
-    LEDR(9)          <= debug_mode;
-    LEDR(8)          <= z_flag_sig;
-    LEDR(7 DOWNTO 2) <= opcode_sig;
-    LEDR(1 DOWNTO 0) <= am_sig;
+    -- SW(7) selects the display source without rebuilding the bitstream:
+    --   SW(7)='0' : APPLICATION view  - LEDs/HEX driven by the ReCOP
+    --               program via memory-mapped $FF2 (LED) and $FF3 (HEX).
+    --   SW(7)='1' : DEBUG view        - PC on HEX3:0, FSM state on HEX4,
+    --               {debug_mode,z,opcode,am} on LEDR (the GP-1 surface).
+    LEDR <= (debug_mode & z_flag_sig & opcode_sig & am_sig) WHEN SW(7) = '1' ELSE
+        io_led_sig(9 DOWNTO 0);
 
-    -- HEX3..HEX0: PC by default, SOP when SW(1) = '1' (lets ReCOP programs
-    -- write visible output via SSOP without rebuilding the bitstream).
-    display_val      <= sop_sig WHEN SW(1) = '1' ELSE
-        pc_sig;
+    display_val <= pc_sig WHEN SW(7) = '1' ELSE
+        hex_disp;
 
     H_D0 : hex_to_7seg PORT
     MAP (hex_in => display_val(3 DOWNTO 0), seg_out => HEX0);
@@ -377,9 +478,11 @@ BEGIN
     H_D3 : hex_to_7seg PORT
     MAP (hex_in => display_val(15 DOWNTO 12), seg_out => HEX3);
 
-    -- HEX4 shows FSM state (3 bits, padded to a nibble). HEX5 blanked.
+    -- HEX4 shows FSM state in debug view, blanked in application view.
     H_S : hex_to_7seg PORT
-    MAP (hex_in => '0' & state_sig, seg_out => HEX4);
+    MAP (hex_in => '0' & state_sig, seg_out => state_seg);
+    HEX4 <= state_seg WHEN SW(7) = '1' ELSE
+        (OTHERS => '1');
     HEX5 <= (OTHERS => '1');
 
 END ARCHITECTURE rtl;
