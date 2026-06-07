@@ -46,7 +46,7 @@ ARCHITECTURE rtl OF cor_asp_noc IS
         (
             DATA_WIDTH       : INTEGER := 16;
             ADDR_WIDTH       : INTEGER := 8;
-            ACC_WIDTH        : INTEGER := 32;
+            ACC_WIDTH        : INTEGER := 40;
             N_WIDTH          : INTEGER := 8;
             MY_NODE_ID       : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0100";
             DEFAULT_DEST     : STD_LOGIC_VECTOR(3 DOWNTO 0) := "0101";
@@ -75,6 +75,8 @@ BEGIN
 
     U_COR : cor_asp
         GENERIC MAP (
+            ACC_WIDTH    => 40,  -- match cor_asp entity default; a 32-bit acc
+                                 -- overflows (signed corr peak ~2^34) -> garbage
             MY_NODE_ID   => MY_NODE_ID,
             DEFAULT_DEST => DEFAULT_DEST
         )
