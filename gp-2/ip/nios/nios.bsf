@@ -1,0 +1,105 @@
+/*
+WARNING: Do NOT edit the input and output ports in this file in a text
+editor if you plan to continue editing the block that represents it in
+the Block Editor! File corruption is VERY likely to occur.
+*/
+/*
+Copyright (C) 2018  Intel Corporation. All rights reserved.
+Your use of Intel Corporation's design tools, logic functions 
+and other software and tools, and its AMPP partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Intel Program License 
+Subscription Agreement, the Intel Quartus Prime License Agreement,
+the Intel FPGA IP License Agreement, or other applicable license
+agreement, including, without limitation, that your use is for
+the sole purpose of programming logic devices manufactured by
+Intel and sold by Intel or its authorized distributors.  Please
+refer to the applicable agreement for further details.
+*/
+(header "symbol" (version "1.1"))
+(symbol
+	(rect 0 0 576 272)
+	(text "nios" (rect 277 -1 292 11)(font "Arial" (font_size 10)))
+	(text "inst" (rect 8 256 20 268)(font "Arial" ))
+	(port
+		(pt 0 72)
+		(input)
+		(text "clk_clk" (rect 0 0 27 12)(font "Arial" (font_size 8)))
+		(text "clk_clk" (rect 4 61 46 72)(font "Arial" (font_size 8)))
+		(line (pt 0 72)(pt 240 72)(line_width 1))
+	)
+	(port
+		(pt 0 128)
+		(input)
+		(text "noc_noc_coe_recv_addr[7..0]" (rect 0 0 122 12)(font "Arial" (font_size 8)))
+		(text "noc_noc_coe_recv_addr[7..0]" (rect 4 117 166 128)(font "Arial" (font_size 8)))
+		(line (pt 0 128)(pt 240 128)(line_width 3))
+	)
+	(port
+		(pt 0 144)
+		(input)
+		(text "noc_noc_coe_recv_data[31..0]" (rect 0 0 125 12)(font "Arial" (font_size 8)))
+		(text "noc_noc_coe_recv_data[31..0]" (rect 4 133 172 144)(font "Arial" (font_size 8)))
+		(line (pt 0 144)(pt 240 144)(line_width 3))
+	)
+	(port
+		(pt 0 240)
+		(input)
+		(text "reset_reset_n" (rect 0 0 56 12)(font "Arial" (font_size 8)))
+		(text "reset_reset_n" (rect 4 229 82 240)(font "Arial" (font_size 8)))
+		(line (pt 0 240)(pt 240 240)(line_width 1))
+	)
+	(port
+		(pt 0 112)
+		(output)
+		(text "noc_noc_coe_send_data[31..0]" (rect 0 0 125 12)(font "Arial" (font_size 8)))
+		(text "noc_noc_coe_send_data[31..0]" (rect 4 101 172 112)(font "Arial" (font_size 8)))
+		(line (pt 0 112)(pt 240 112)(line_width 3))
+	)
+	(port
+		(pt 0 160)
+		(output)
+		(text "noc_noc_coe_send_addr[7..0]" (rect 0 0 122 12)(font "Arial" (font_size 8)))
+		(text "noc_noc_coe_send_addr[7..0]" (rect 4 149 166 160)(font "Arial" (font_size 8)))
+		(line (pt 0 160)(pt 240 160)(line_width 3))
+	)
+	(port
+		(pt 0 200)
+		(output)
+		(text "recop_reset_pio_external_connection_export" (rect 0 0 179 12)(font "Arial" (font_size 8)))
+		(text "recop_reset_pio_external_connection_export" (rect 4 189 256 200)(font "Arial" (font_size 8)))
+		(line (pt 0 200)(pt 240 200)(line_width 1))
+	)
+	(drawing
+		(text "clk" (rect 225 43 468 99)(font "Arial" (color 128 0 0)(font_size 9)))
+		(text "clk" (rect 245 67 508 144)(font "Arial" (color 0 0 0)))
+		(text "noc_noc" (rect 193 83 428 179)(font "Arial" (color 128 0 0)(font_size 9)))
+		(text "coe_send_data" (rect 245 107 568 224)(font "Arial" (color 0 0 0)))
+		(text "coe_recv_addr" (rect 245 123 568 256)(font "Arial" (color 0 0 0)))
+		(text "coe_recv_data" (rect 245 139 568 288)(font "Arial" (color 0 0 0)))
+		(text "coe_send_addr" (rect 245 155 568 320)(font "Arial" (color 0 0 0)))
+		(text "recop_reset_pio_external_connection" (rect 23 171 256 355)(font "Arial" (color 128 0 0)(font_size 9)))
+		(text "export" (rect 245 195 526 400)(font "Arial" (color 0 0 0)))
+		(text "reset" (rect 211 211 452 435)(font "Arial" (color 128 0 0)(font_size 9)))
+		(text "reset_n" (rect 245 235 532 480)(font "Arial" (color 0 0 0)))
+		(text " nios " (rect 556 256 1148 522)(font "Arial" ))
+		(line (pt 240 32)(pt 336 32)(line_width 1))
+		(line (pt 336 32)(pt 336 256)(line_width 1))
+		(line (pt 240 256)(pt 336 256)(line_width 1))
+		(line (pt 240 32)(pt 240 256)(line_width 1))
+		(line (pt 241 52)(pt 241 76)(line_width 1))
+		(line (pt 242 52)(pt 242 76)(line_width 1))
+		(line (pt 241 92)(pt 241 164)(line_width 1))
+		(line (pt 242 92)(pt 242 164)(line_width 1))
+		(line (pt 241 180)(pt 241 204)(line_width 1))
+		(line (pt 242 180)(pt 242 204)(line_width 1))
+		(line (pt 241 220)(pt 241 244)(line_width 1))
+		(line (pt 242 220)(pt 242 244)(line_width 1))
+		(line (pt 0 0)(pt 576 0)(line_width 1))
+		(line (pt 576 0)(pt 576 272)(line_width 1))
+		(line (pt 0 272)(pt 576 272)(line_width 1))
+		(line (pt 0 0)(pt 0 272)(line_width 1))
+	)
+)
