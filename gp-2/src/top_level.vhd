@@ -39,21 +39,44 @@ USE work.TdmaMinTypes.ALL;
 --   Reference data pipeline (configured by the ReCOP boot program):
 --     ADC(1) -> AVG(2) -> COR(3) -> PD(4)   [results -> ReCOP(0)]
 --
--- Board controls:
---   CLOCK_50    50 MHz board clock (input to PLL)
+-- Board controls (application build):
+--   CLOCK_50    50 MHz board clock (input to PLL -> 10 MHz sys_clk)
 --   KEY(0)      reset (active-low button -> active-high internal reset)
---   KEY(3)      debug step (rising edge advances FSM in debug mode)
---   SW(0)       debug_mode (1 = freeze FSM)
---   SW(1)       display select on HEX3..HEX0:
---                 '0' = PC, '1' = SOP (last value written by SSOP)
+--   KEY(1)      cycle operating mode  RAW <-> MEASURE   (debounced, $FF1 bit0)
+--   KEY(2)      acknowledge / clear the alarm latch      (debounced, $FF1 bit1)
+--   KEY(3)      unused (debug-step scaffolding, inert)
+--   SW(3:0)     FTW scenario select -- emulated grid frequency. Read at $FF0
+--               only when a mode is (re)configured, so press KEY(1) to apply a
+--               new setting. See the FTW table below.
+--   SW(5:4)     ADC sample rate (00=8kHz default, 01=16k, 10=32k, 11=48k),
+--               overlaid onto the Conf-ADC SR field by app.asm. Keep at 00 for
+--               the calibrated alarm demo (FTW table / band assume 8 kHz).
+--   SW(9:6)     unused (SW(7) view / SW(9) freeze were the old debug surface,
+--               now disconnected -- see debug_mode note in the architecture).
 --
--- Board observables:
---   LEDR(9)     debug_mode
---   LEDR(8)     z_flag
---   LEDR(7:2)   opcode
---   LEDR(1:0)   AM
---   HEX5:HEX4   FSM state (low nibble shown on HEX4)
---   HEX3:HEX0   PC or SOP (per SW(1))
+-- Board observables (all driven by the ReCOP program via $FF2 LED / $FF3 HEX):
+--   LEDR(0)     running heartbeat (lit while the main loop executes)
+--   LEDR(1)     mode      (0 = RAW, 1 = MEASURE)
+--   LEDR(2)     MEASURE pipeline active (lights together with LEDR(1))
+--   LEDR(9:7)   alarm     (period outside the accept band; KEY(2) clears)
+--   LEDR(6:3)   unused
+--   HEX3:HEX0   RAW: latest raw ADC sample;  MEASURE: PD period count ($FF4)
+--   HEX5:HEX4   blank
+--
+-- FTW switch table (SW[3:0]) -- emulated grid frequency and the 16-bit FTW the
+-- app loads into the ADC-ASP.  FTW = round(f * 65536 / 8000) at ADC SR=00 (8kHz).
+-- Accept band 48.5..51.5 Hz inclusive (validated on board: all 16 settings
+-- behave as below, with the 48.5 Hz / 51.5 Hz endpoints reading in-band).
+-- PMIN/PMAX live in test/app.asm (the authoritative copy of these values).
+--   SW  f(Hz)   FTW      expected        SW  f(Hz)   FTW      expected
+--   0   47.00   0x0181   ALARM (low)     8   47.50   0x0185   ALARM (low)
+--   1   48.00   0x0189   ALARM (low)     9   48.50   0x018D   ok
+--   2   49.00   0x0191   ok              A   49.25   0x0193   ok
+--   3   49.50   0x0195   ok              B   49.75   0x0197   ok
+--   4   50.00   0x019A   ok (nominal)    C   50.25   0x019C   ok
+--   5   50.50   0x019E   ok              D   50.75   0x01A0   ok
+--   6   51.00   0x01A2   ok              E   51.50   0x01A6   ok
+--   7   52.00   0x01AA   ALARM (high)    F   52.50   0x01AE   ALARM (high)
 --
 -- Supersedes top_smoke.vhd (the W2.1-era compile-check top).
 -- ============================================================
@@ -118,6 +141,11 @@ ARCHITECTURE rtl OF top_level IS
     -- Debug-display segment source for HEX4 (FSM state)
     SIGNAL state_seg     : STD_LOGIC_VECTOR(6 DOWNTO 0);
 
+    -- ===== W6 reconfig node <-> ReCOP PM write port =====
+    SIGNAL pm_wr_en_sig   : STD_LOGIC;
+    SIGNAL pm_wr_addr_sig : STD_LOGIC_VECTOR(14 DOWNTO 0);
+    SIGNAL pm_wr_data_sig : STD_LOGIC_VECTOR(15 DOWNTO 0);
+
     -- ===== ReCOP debug surface =====
     SIGNAL pc_sig        : STD_LOGIC_VECTOR(15 DOWNTO 0);
     SIGNAL rz_sig        : STD_LOGIC_VECTOR(15 DOWNTO 0);
@@ -156,7 +184,23 @@ ARCHITECTURE rtl OF top_level IS
             rz_out         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
             opcode_out     : OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
             am_out         : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
-            state_out      : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)
+            state_out      : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+            pm_wr_en       : IN STD_LOGIC;
+            pm_wr_addr     : IN STD_LOGIC_VECTOR(14 DOWNTO 0);
+            pm_wr_data     : IN STD_LOGIC_VECTOR(15 DOWNTO 0)
+        );
+    END COMPONENT;
+
+    COMPONENT reconfig_node IS
+        PORT
+        (
+            clock      : IN  STD_LOGIC;
+            reset      : IN  STD_LOGIC;
+            send       : OUT tdma_min_port;
+            recv       : IN  tdma_min_port;
+            pm_wr_en   : OUT STD_LOGIC;
+            pm_wr_addr : OUT STD_LOGIC_VECTOR(14 DOWNTO 0);
+            pm_wr_data : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
         );
     END COMPONENT;
 
@@ -277,9 +321,12 @@ BEGIN
 
     -- Hold design in reset until KEY(0) released AND PLL locked.
     reset      <= key0_reset OR NOT pll_locked;
-    -- FSM-freeze single-stepping needs a dedicated switch, and the W5 board
-    -- map has none spare, so freeze is disabled for the application build.
-    -- KEY(3)/debug_step wiring is kept (inert while debug_mode = '0').
+    -- Debug freeze/view removed for now: the board only ever runs the app
+    -- (no FSM freeze, no display overlay). The debug scaffolding (pc_sig,
+    -- state_sig, H_S, step_detect) is kept but disconnected, to be re-enabled
+    -- later with a 2-FF synchroniser on the freeze switch -- feeding SW(9)
+    -- straight into the clocked FSM caused metastable snapshots when toggled
+    -- live.
     debug_mode <= '0';
 
     -- KEY(3) rising-edge detector -> single-cycle debug_step pulse
@@ -375,7 +422,10 @@ BEGIN
     rz_out         => rz_sig,
     opcode_out     => opcode_sig,
     am_out         => am_sig,
-    state_out      => state_sig
+    state_out      => state_sig,
+    pm_wr_en       => pm_wr_en_sig,
+    pm_wr_addr     => pm_wr_addr_sig,
+    pm_wr_data     => pm_wr_data_sig
     );
 
     -- ===== Network interface (ReCOP <-> NoC port 0) =====
@@ -437,11 +487,23 @@ BEGIN
     recv  => recvs(4)
     );
 
-    -- ===== Ports 5..7 idle (reserved per topology comment in header) =====
-    gen_unused : FOR i IN 5 TO NOC_PORTS - 1 GENERATE
-        sends(i).addr <= (OTHERS => '0');
-        sends(i).data <= (OTHERS => '0');
-    END GENERATE;
+    -- ===== Reconfig node (NoC port 6, W6) =====
+    U_RECONFIG : reconfig_node PORT
+    MAP (
+    clock      => sys_clk,
+    reset      => reset,
+    send       => sends(6),
+    recv       => recvs(6),
+    pm_wr_en   => pm_wr_en_sig,
+    pm_wr_addr => pm_wr_addr_sig,
+    pm_wr_data => pm_wr_data_sig
+    );
+
+    -- ===== Ports 5 and 7 idle (Nios II and spare, deferred) =====
+    sends(5).addr <= (OTHERS => '0');
+    sends(5).data <= (OTHERS => '0');
+    sends(7).addr <= (OTHERS => '0');
+    sends(7).data <= (OTHERS => '0');
 
     -- ===== NoC fabric =====
     U_NOC : TdmaMin
@@ -454,16 +516,12 @@ BEGIN
     );
 
     -- ===== Board observables =====
-    -- SW(7) selects the display source without rebuilding the bitstream:
-    --   SW(7)='0' : APPLICATION view  - LEDs/HEX driven by the ReCOP
-    --               program via memory-mapped $FF2 (LED) and $FF3 (HEX).
-    --   SW(7)='1' : DEBUG view        - PC on HEX3:0, FSM state on HEX4,
-    --               {debug_mode,z,opcode,am} on LEDR (the GP-1 surface).
-    LEDR <= (debug_mode & z_flag_sig & opcode_sig & am_sig) WHEN SW(7) = '1' ELSE
-        io_led_sig(9 DOWNTO 0);
+    -- Application view only: LEDR and HEX3:0 are driven by the ReCOP program
+    -- via memory-mapped $FF2 (LED) and $FF3 (HEX). The SW(7) debug-view mux is
+    -- removed for now (see debug_mode note above).
+    LEDR <= io_led_sig(9 DOWNTO 0);
 
-    display_val <= pc_sig WHEN SW(7) = '1' ELSE
-        hex_disp;
+    display_val <= hex_disp;
 
     H_D0 : hex_to_7seg PORT
     MAP (hex_in => display_val(3 DOWNTO 0), seg_out => HEX0);
@@ -474,11 +532,12 @@ BEGIN
     H_D3 : hex_to_7seg PORT
     MAP (hex_in => display_val(15 DOWNTO 12), seg_out => HEX3);
 
-    -- HEX4 shows FSM state in debug view, blanked in application view.
+    -- HEX5:HEX4 unused in the application view (blanked).
+    -- H_S is retained scaffolding for the future debug view; its output
+    -- (state_seg) is intentionally unused while debug is disconnected.
     H_S : hex_to_7seg PORT
     MAP (hex_in => '0' & state_sig, seg_out => state_seg);
-    HEX4 <= state_seg WHEN SW(7) = '1' ELSE
-        (OTHERS         => '1');
+    HEX4 <= (OTHERS => '1');
     HEX5 <= (OTHERS => '1');
 
 END ARCHITECTURE rtl;

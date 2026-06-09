@@ -22,6 +22,7 @@ vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/recop/provide
 vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/recop/provided/regfile.vhd}
 vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/recop/provided/data_mem.vhd}
 vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/recop/provided/prog_mem.vhd}
+vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/recop/prog_mem_dp.vhd}
 
 # ---- ReCOP core ----
 vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/recop/datapath.vhd}

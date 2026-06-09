@@ -54,7 +54,12 @@ ENTITY recop IS
         rz_out         : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
         opcode_out     : OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
         am_out         : OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
-        state_out      : OUT STD_LOGIC_VECTOR(2 DOWNTO 0)
+        state_out      : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
+
+        -- Program-memory write port (W6 reconfig, drives prog_mem_dp port B)
+        pm_wr_en       : IN STD_LOGIC;
+        pm_wr_addr     : IN STD_LOGIC_VECTOR(14 DOWNTO 0);
+        pm_wr_data     : IN STD_LOGIC_VECTOR(15 DOWNTO 0)
     );
 END ENTITY recop;
 
@@ -164,12 +169,15 @@ ARCHITECTURE structural OF recop IS
         );
     END COMPONENT;
 
-    COMPONENT prog_mem IS
+    COMPONENT prog_mem_dp IS
         PORT
         (
-            address : IN STD_LOGIC_VECTOR(14 DOWNTO 0);
-            clock   : IN STD_LOGIC;
-            q       : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
+            clock     : IN  STD_LOGIC;
+            address_a : IN  STD_LOGIC_VECTOR(14 DOWNTO 0);
+            q_a       : OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+            address_b : IN  STD_LOGIC_VECTOR(14 DOWNTO 0);
+            data_b    : IN  STD_LOGIC_VECTOR(15 DOWNTO 0);
+            wren_b    : IN  STD_LOGIC
         );
     END COMPONENT;
 
@@ -252,12 +260,15 @@ BEGIN
     pc_out         => pc_sig
     );
 
-    PM : prog_mem PORT
+    PM : prog_mem_dp PORT
     MAP
     (
-    address => pc_sig(14 DOWNTO 0),
-    clock   => clk,
-    q       => pm_data
+    clock     => clk,
+    address_a => pc_sig(14 DOWNTO 0),
+    q_a       => pm_data,
+    address_b => pm_wr_addr,
+    data_b    => pm_wr_data,
+    wren_b    => pm_wr_en
     );
 
 END ARCHITECTURE structural;

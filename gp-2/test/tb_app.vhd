@@ -151,7 +151,10 @@ BEGIN
         rz_out     => rz_out,
         opcode_out => opcode_out,
         am_out     => am_out,
-        state_out  => state_out
+        state_out  => state_out,
+        pm_wr_en   => '0',
+        pm_wr_addr => (OTHERS => '0'),
+        pm_wr_data => (OTHERS => '0')
     );
 
     U_NI : ENTITY work.recop_ni PORT MAP (

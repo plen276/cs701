@@ -1,13 +1,10 @@
 transcript on
 
-# Run from gp-2/ so prog_mem.vhd can resolve ./assembler/test.mif:
+# Run from gp-2/ so prog_mem_dp can resolve ./assembler/test.mif:
 #   cd D:/Documents/GitHub_University/cs701/gp-2
-#   do simulation/modelsim/tb_cor_pipeline.do
-#
-# Assembles cor_pipeline.asm before simulating.
-# Topology: ReCOP(0) + ADC(1) + AVG(2) + COR(3); recvs(4) watched by TB.
+#   do simulation/modelsim/tb_reconfig_demo.do
 
-exec python assembler/asm.py test/cor_pipeline.asm -o assembler/test.mif
+exec python assembler/asm.py test/reconfig_demo.asm -o assembler/test.mif
 
 quit -sim
 
@@ -42,45 +39,35 @@ vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/noc/TdmaMinSl
 vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/noc/TdmaMinFabric.vhd}
 vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/noc/TdmaMin.vhd}
 
-# ---- ASPs ----
-vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/asps/adc_asp.vhd}
-vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/asps/avg_asp.vhd}
-vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/asps/cor_asp/cor_asp_pkg.vhd}
-vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/asps/cor_asp/sample_mem.vhd}
-vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/asps/cor_asp/cor_asp_datapath.vhd}
-vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/asps/cor_asp/cor_asp_control.vhd}
-vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/asps/cor_asp/cor_asp.vhd}
-vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/asps/cor_asp_noc.vhd}
-
-# ---- NI ----
+# ---- Reconfig node + NI ----
+vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/recop/reconfig_node.vhd}
 vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/src/ni/recop_ni.vhd}
 
 # ---- Testbench ----
-vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/test/tb_cor_pipeline.vhd}
+vcom -93 -work work {D:/Documents/GitHub_University/cs701/gp-2/test/tb_reconfig_demo.vhd}
 
 # ---- Simulate ----
-vsim -t 1ps work.tb_cor_pipeline
+vsim -t 1ps work.tb_reconfig_demo
+set NumericStdNoWarnings 1
 
 add wave -divider "Clock / Reset"
-add wave /tb_cor_pipeline/clock
-add wave /tb_cor_pipeline/reset
+add wave /tb_reconfig_demo/clock
+add wave /tb_reconfig_demo/reset
 
-add wave -divider "ReCOP debug"
-add wave -radix hex /tb_cor_pipeline/pc_out
-add wave -radix hex /tb_cor_pipeline/opcode_out
-add wave -radix binary /tb_cor_pipeline/state_out
+add wave -divider "ReCOP"
+add wave -radix hex /tb_reconfig_demo/pc_out
+add wave -radix hex /tb_reconfig_demo/io_hex
+add wave -radix hex /tb_reconfig_demo/io_led
+add wave /tb_reconfig_demo/io_events
 
-add wave -divider "NoC sends"
-add wave -radix hex /tb_cor_pipeline/sends(0).data
-add wave -radix hex /tb_cor_pipeline/sends(1).data
-add wave -radix hex /tb_cor_pipeline/sends(2).data
-add wave -radix hex /tb_cor_pipeline/sends(3).data
+add wave -divider "Reconfig PM write"
+add wave /tb_reconfig_demo/pm_wr_en
+add wave -radix hex /tb_reconfig_demo/pm_wr_addr
+add wave -radix hex /tb_reconfig_demo/pm_wr_data
 
-add wave -divider "NoC recvs"
-add wave -radix hex /tb_cor_pipeline/recvs(1).data
-add wave -radix hex /tb_cor_pipeline/recvs(2).data
-add wave -radix hex /tb_cor_pipeline/recvs(3).data
-add wave -radix hex /tb_cor_pipeline/recvs(4).data
+add wave -divider "NoC port 0 / 6"
+add wave -radix hex /tb_reconfig_demo/sends(0).data
+add wave -radix hex /tb_reconfig_demo/recvs(6).data
 
-run 600us
+run 2 ms
 wave zoom full

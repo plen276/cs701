@@ -29,6 +29,8 @@
 ; FTW (emulated grid frequency) is selected by SW[3:0] through a
 ; small lookup table initialised at boot. Switches choose a grid-
 ; frequency scenario; ReCOP translates that scenario into ADC FTW.
+; SW[5:4] selects the ADC sample rate (overlaid onto the Conf-ADC SR
+; field at each config site); keep it 00 (8 kHz) for the calibrated band.
 ;
 ; Registers: R8 = mode (0=RAW,1=MEASURE), R9 = alarm latch (0/1)
 ;            R10 = alarm warm-up inhibit counter after MEASURE config
@@ -64,7 +66,8 @@ FTW_F   EQU 0x01F       ; 52.50 Hz -> 0x01AE
 ; Period-band thresholds. PD now reports peak_time in CORRELATION SAMPLES
 ; (clock-independent), so for signed COR at 8 kHz the period ~= Fs/(2*f):
 ;   47 Hz -> 85,  49 Hz -> 82,  50 Hz -> 80,  51 Hz -> 78,  52 Hz -> 76
-; Band below picks an acceptance window of ~48.5..51.5 Hz; retune on board.
+; Acceptance window 48.5..51.5 Hz inclusive; validated on board across all 16
+; SW settings (48.5 Hz @ SW=9 and 51.5 Hz @ SW=E both read in-band).
 PMIN    EQU 0x004C      ; period <= 76 (~>= 52 Hz) => frequency too high
 PMAX    EQU 0x0053      ; period >  83 (~<= 48.5 Hz) => frequency too low
 
@@ -119,9 +122,18 @@ to_raw  LDR R8 #0x0000          ; mode = RAW
         AND R7 R7 #0x000F
         OR  R7 R7 #0x0010
         LDR R7 R7
-        ; ADC: type A, dest=1, next=0 (ReCOP), SR=00 (8 kHz), En=1, Ch0
+        ; ADC: type A, dest=1, next=0 (ReCOP), En=1, Ch0; SR from SW[5:4]
         LDR R1 #0xA102
-        DATACALL R1             ; register form: DPCR = R1 | R7(FTW)
+        ; overlay sample rate: SW[5:4] -> Conf-ADC SR field (packet 19:18 = R1[3:2]).
+        ; No shift instruction, so set each SR bit with a conditional OR.
+        LDR R5 $IO_SW
+        AND R6 R5 #0x0010       ; SW[4] = SR bit0?
+        SZ rawsr1
+        OR R1 R1 #0x0004        ; set packet bit 18
+rawsr1  AND R6 R5 #0x0020       ; SW[5] = SR bit1?
+        SZ rawsr2
+        OR R1 R1 #0x0008        ; set packet bit 19
+rawsr2  DATACALL R1             ; register form: DPCR = R1 | R7(FTW)
         NOOP
         NOOP
         JMP loop
@@ -166,9 +178,17 @@ to_meas LDR R8 #0x0001          ; mode = MEASURE
         AND R7 R7 #0x000F
         OR  R7 R7 #0x0010
         LDR R7 R7
-        ; ADC: type A, dest=1, next=2 (AVG), SR=00 (8 kHz), En=1, Ch0
+        ; ADC: type A, dest=1, next=2 (AVG), En=1, Ch0; SR from SW[5:4]
         LDR R1 #0xA122
-        DATACALL R1             ; register form: DPCR = R1 | R7(FTW)
+        ; overlay sample rate: SW[5:4] -> Conf-ADC SR field (packet 19:18 = R1[3:2]).
+        LDR R5 $IO_SW
+        AND R6 R5 #0x0010       ; SW[4] = SR bit0?
+        SZ mssr1
+        OR R1 R1 #0x0004        ; set packet bit 18
+mssr1   AND R6 R5 #0x0020       ; SW[5] = SR bit1?
+        SZ mssr2
+        OR R1 R1 #0x0008        ; set packet bit 19
+mssr2   DATACALL R1             ; register form: DPCR = R1 | R7(FTW)
         NOOP
         NOOP
         JMP loop

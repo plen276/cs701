@@ -51,8 +51,11 @@ set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
+# Board level sources
 set_global_assignment -name VHDL_FILE src/top_level.vhd
 set_global_assignment -name VHDL_FILE src/board/hex_to_7seg.vhd
+set_global_assignment -name QIP_FILE src/board/system_pll_10.qip
+# ADC/AVG-ASP (average) core sources
 set_global_assignment -name VHDL_FILE src/asps/avg_asp.vhd
 set_global_assignment -name VHDL_FILE src/asps/adc_asp.vhd
 # COR-ASP (autocorrelation) core sources + NoC adapter
@@ -70,15 +73,7 @@ set_global_assignment -name VHDL_FILE src/asps/pd_asp/SeqMax.vhd
 set_global_assignment -name VHDL_FILE src/asps/pd_asp/SeqMin.vhd
 set_global_assignment -name VHDL_FILE src/asps/pd_asp/ControlUnit.vhd
 set_global_assignment -name VHDL_FILE src/asps/pd_asp/PeakDetector.vhd
-set_global_assignment -name VHDL_FILE src/ni/recop_ni.vhd
-set_global_assignment -name VHDL_FILE src/noc/TdmaMinTypes.vhd
-set_global_assignment -name VHDL_FILE src/noc/TdmaMinSwitch.vhd
-set_global_assignment -name VHDL_FILE src/noc/TdmaMinStage.vhd
-set_global_assignment -name VHDL_FILE src/noc/TdmaMinSlots.vhd
-set_global_assignment -name VHDL_FILE src/noc/TdmaMinInterface.vhd
-set_global_assignment -name VHDL_FILE src/noc/TdmaMinFabric.vhd
-set_global_assignment -name VHDL_FILE src/noc/TdmaMin.vhd
-set_global_assignment -name QIP_FILE src/noc/TdmaMinFifo/TdmaMinFifo.qip
+# ReCOP core sources
 set_global_assignment -name VHDL_FILE src/recop.vhd
 set_global_assignment -name VHDL_FILE src/recop/datapath.vhd
 set_global_assignment -name VHDL_FILE src/recop/control_unit.vhd
@@ -90,6 +85,18 @@ set_global_assignment -name VHDL_FILE src/recop/provided/prog_mem.vhd
 set_global_assignment -name VHDL_FILE src/recop/provided/opcodes.vhd
 set_global_assignment -name VHDL_FILE src/recop/provided/data_mem.vhd
 set_global_assignment -name VHDL_FILE src/recop/provided/ALU.vhd
+set_global_assignment -name VHDL_FILE src/recop/reconfig_node.vhd
+set_global_assignment -name VHDL_FILE src/recop/prog_mem_dp.vhd
+set_global_assignment -name VHDL_FILE src/ni/recop_ni.vhd
+# NoC core sources
+set_global_assignment -name VHDL_FILE src/noc/TdmaMinTypes.vhd
+set_global_assignment -name VHDL_FILE src/noc/TdmaMinSwitch.vhd
+set_global_assignment -name VHDL_FILE src/noc/TdmaMinStage.vhd
+set_global_assignment -name VHDL_FILE src/noc/TdmaMinSlots.vhd
+set_global_assignment -name VHDL_FILE src/noc/TdmaMinInterface.vhd
+set_global_assignment -name VHDL_FILE src/noc/TdmaMinFabric.vhd
+set_global_assignment -name VHDL_FILE src/noc/TdmaMin.vhd
+set_global_assignment -name QIP_FILE src/noc/TdmaMinFifo/TdmaMinFifo.qip
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
@@ -351,5 +358,4 @@ set_location_assignment PIN_E12 -to VGA_R[6]
 set_location_assignment PIN_F13 -to VGA_R[7]
 set_location_assignment PIN_C10 -to VGA_SYNC_N
 set_location_assignment PIN_D11 -to VGA_VS
-set_global_assignment -name QIP_FILE src/board/system_pll_10.qip
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

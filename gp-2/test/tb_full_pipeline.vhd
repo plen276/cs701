@@ -109,11 +109,20 @@ BEGIN
         sop        => sop,
         dpcr       => dpcr,
         dpcr_load  => dpcr_load,
+        io_sw          => (OTHERS => '0'),
+        io_events      => (OTHERS => '0'),
+        io_led         => OPEN,
+        io_hex         => OPEN,
+        io_period      => (OTHERS => '0'),
+        io_event_clear => OPEN,
         pc_out     => pc_out,
         rz_out     => rz_out,
         opcode_out => opcode_out,
         am_out     => am_out,
-        state_out  => state_out
+        state_out  => state_out,
+        pm_wr_en   => '0',
+        pm_wr_addr => (OTHERS => '0'),
+        pm_wr_data => (OTHERS => '0')
     );
 
     U_NI : ENTITY work.recop_ni PORT MAP (
