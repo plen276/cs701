@@ -10,12 +10,27 @@ USE work.TdmaMinTypes.ALL;
 --
 -- DE1-SoC board top for GP-2.
 --
--- Clock: CLOCK_50 (50 MHz) feeds system_pll_10, which outputs 10 MHz on
--- outclk_0 -> sys_clk. Everything downstream runs on 10 MHz.
--- The 50 MHz target failed setup timing (-7 ns slack, IR->regfile-write path);
--- 25 MHz gives ~13 ns margin without touching the ReCOP architecture.
--- ADC sample-rate divisors are computed against 10 MHz via the clock_hz
--- generic override on the adc_asp instantiation below.
+-- Clocking -- two domains from one PLL:
+--   CLOCK_50 (50 MHz) -> system_pll_10 ->
+--     outclk_0 = 10 MHz -> sys_clk  : the CRITICAL part (ReCOP, recop_ni, NoC,
+--                                     ASPs, reconfig node) runs here. 10 MHz
+--                                     because ReCOP cannot close timing higher
+--                                     -- the IR->regfile-write path is the
+--                                     limiter (the 50 MHz target failed setup).
+--     outclk_1 = 50 MHz -> nios_clk : the Nios II subsystem runs here -- fast
+--                                     enough for reliable JTAG download/debug
+--                                     (10 MHz is too slow relative to JTAG TCK).
+--
+--   The two domains meet ONLY inside the Nios Qsys system, at its Avalon-MM
+--   clock-crossing bridge: the Nios CPU/JTAG-UART/on-chip RAM are on 50 MHz,
+--   while noc_avalon_bridge and recop_reset_pio sit on the 10 MHz side of that
+--   bridge. So everything that touches the NoC (sends(5)/recvs(5)) and the
+--   ReCOP reset (the recop_reset_pio output) is generated in the 10 MHz domain
+--   -- no CDC on the NoC fabric or the ReCOP reset path; the sole crossing is
+--   the proven Avalon clock-crossing bridge. See gp-2/docs/w7-nios-plan.md.
+--
+--   ADC sample-rate divisors are computed against 10 MHz via the clock_hz
+--   generic override on the adc_asp instantiation below.
 --
 -- Node identity / addressing:
 --   A node's NoC identity IS its port index. TdmaMin assigns each
@@ -32,7 +47,7 @@ USE work.TdmaMinTypes.ALL;
 --   NoC port 2  avg_asp  (moving-average)   (id 2)
 --   NoC port 3  cor_asp via cor_asp_noc     (id 3)
 --   NoC port 4  PeakDetector (pd_asp)       (id 4)
---   NoC port 5  RESERVED for Nios II bridge (W7, deferred)
+--   NoC port 5  Nios II bridge             (id 5)
 --   NoC port 6  RESERVED for reconfig node  (W6)
 --   NoC port 7  spare
 --
@@ -40,7 +55,7 @@ USE work.TdmaMinTypes.ALL;
 --     ADC(1) -> AVG(2) -> COR(3) -> PD(4)   [results -> ReCOP(0)]
 --
 -- Board controls (application build):
---   CLOCK_50    50 MHz board clock (input to PLL -> 10 MHz sys_clk)
+--   CLOCK_50    50 MHz board clock (input to PLL -> 10 MHz sys_clk + 50 MHz nios_clk)
 --   KEY(0)      reset (active-low button -> active-high internal reset)
 --   KEY(1)      cycle operating mode  RAW <-> MEASURE   (debounced, $FF1 bit0)
 --   KEY(2)      acknowledge / clear the alarm latch      (debounced, $FF1 bit1)
@@ -106,61 +121,67 @@ END ENTITY top_level;
 ARCHITECTURE rtl OF top_level IS
 
     -- ===== Clock + reset =====
-    SIGNAL sys_clk       : STD_LOGIC; -- 10 MHz PLL output, drives everything
-    SIGNAL pll_locked    : STD_LOGIC; -- PLL lock indicator
-    SIGNAL key0_reset    : STD_LOGIC; -- raw active-high reset from KEY(0)
-    SIGNAL reset         : STD_LOGIC; -- gated reset (held until PLL locked)
+    SIGNAL sys_clk              : STD_LOGIC; -- 10 MHz PLL output, drives everything
+    SIGNAL nios_clk             : STD_LOGIC; -- 50 MHz PLL output, drives Nios
+    SIGNAL pll_locked           : STD_LOGIC; -- PLL lock indicator
+    SIGNAL key0_reset           : STD_LOGIC; -- raw active-high reset from KEY(0)
+    SIGNAL reset                : STD_LOGIC; -- gated reset (held until PLL locked)
+    SIGNAL nios_reset_n         : STD_LOGIC; -- active-low reset for Platform Designer
 
     -- ===== Board controls =====
-    SIGNAL debug_mode    : STD_LOGIC;
-    SIGNAL key3_reg      : STD_LOGIC := '1';
-    SIGNAL debug_step    : STD_LOGIC := '0';
+    SIGNAL debug_mode           : STD_LOGIC;
+    SIGNAL key3_reg             : STD_LOGIC := '1';
+    SIGNAL debug_step           : STD_LOGIC := '0';
 
     -- ===== ReCOP <-> NI =====
-    SIGNAL sip_sig       : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL sop_sig       : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL dpcr_sig      : STD_LOGIC_VECTOR(31 DOWNTO 0);
-    SIGNAL dpcr_load_sig : STD_LOGIC;
+    SIGNAL sip_sig              : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL sop_sig              : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL dpcr_sig             : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL dpcr_load_sig        : STD_LOGIC;
 
     -- ===== Memory-mapped board I/O (W5) =====
-    SIGNAL io_sw_sig     : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL io_events_sig : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL io_led_sig    : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL io_hex_sig    : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL io_period_sig : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL io_clear_sig  : STD_LOGIC;
+    SIGNAL io_sw_sig            : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL io_events_sig        : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL io_led_sig           : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL io_hex_sig           : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL io_period_sig        : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL io_clear_sig         : STD_LOGIC;
     -- KEY debounce (sampled at DEB_TICKS): sticky press flags
     -- bit0 = KEY1 (mode), bit1 = KEY2 (ack)
-    SIGNAL deb_cnt       : UNSIGNED(15 DOWNTO 0)         := (OTHERS => '0');
-    SIGNAL key1_prev     : STD_LOGIC                     := '1';
-    SIGNAL key2_prev     : STD_LOGIC                     := '1';
-    SIGNAL events_reg    : STD_LOGIC_VECTOR(1 DOWNTO 0)  := "00";
+    SIGNAL deb_cnt              : UNSIGNED(15 DOWNTO 0)         := (OTHERS => '0');
+    SIGNAL key1_prev            : STD_LOGIC                     := '1';
+    SIGNAL key2_prev            : STD_LOGIC                     := '1';
+    SIGNAL events_reg           : STD_LOGIC_VECTOR(1 DOWNTO 0)  := "00";
     -- HEX display throttle (~4 Hz): a slow snapshot so fast values are readable
-    SIGNAL ref_cnt       : UNSIGNED(23 DOWNTO 0)         := (OTHERS => '0');
-    SIGNAL hex_disp      : STD_LOGIC_VECTOR(15 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL ref_cnt              : UNSIGNED(23 DOWNTO 0)         := (OTHERS => '0');
+    SIGNAL hex_disp             : STD_LOGIC_VECTOR(15 DOWNTO 0) := (OTHERS => '0');
     -- Debug-display segment source for HEX4 (FSM state)
-    SIGNAL state_seg     : STD_LOGIC_VECTOR(6 DOWNTO 0);
+    SIGNAL state_seg            : STD_LOGIC_VECTOR(6 DOWNTO 0);
 
     -- ===== W6 reconfig node <-> ReCOP PM write port =====
-    SIGNAL pm_wr_en_sig   : STD_LOGIC;
-    SIGNAL pm_wr_addr_sig : STD_LOGIC_VECTOR(14 DOWNTO 0);
-    SIGNAL pm_wr_data_sig : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL pm_wr_en_sig         : STD_LOGIC;
+    SIGNAL pm_wr_addr_sig       : STD_LOGIC_VECTOR(14 DOWNTO 0);
+    SIGNAL pm_wr_data_sig       : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL nios_recop_reset_sig : STD_LOGIC;
+    SIGNAL recop_reset_sig      : STD_LOGIC;
 
     -- ===== ReCOP debug surface =====
-    SIGNAL pc_sig        : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL rz_sig        : STD_LOGIC_VECTOR(15 DOWNTO 0);
-    SIGNAL opcode_sig    : STD_LOGIC_VECTOR(5 DOWNTO 0);
-    SIGNAL am_sig        : STD_LOGIC_VECTOR(1 DOWNTO 0);
-    SIGNAL state_sig     : STD_LOGIC_VECTOR(2 DOWNTO 0);
-    SIGNAL z_flag_sig    : STD_LOGIC;
+    SIGNAL pc_sig               : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL rz_sig               : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL opcode_sig           : STD_LOGIC_VECTOR(5 DOWNTO 0);
+    SIGNAL am_sig               : STD_LOGIC_VECTOR(1 DOWNTO 0);
+    SIGNAL state_sig            : STD_LOGIC_VECTOR(2 DOWNTO 0);
+    SIGNAL z_flag_sig           : STD_LOGIC;
 
     -- ===== Display mux =====
-    SIGNAL display_val   : STD_LOGIC_VECTOR(15 DOWNTO 0);
+    SIGNAL display_val          : STD_LOGIC_VECTOR(15 DOWNTO 0);
 
     -- ===== NoC fabric =====
-    CONSTANT NOC_PORTS   : POSITIVE := 8;
-    SIGNAL sends         : tdma_min_ports(0 TO NOC_PORTS - 1);
-    SIGNAL recvs         : tdma_min_ports(0 TO NOC_PORTS - 1);
+    CONSTANT NOC_PORTS          : POSITIVE := 8;
+    SIGNAL sends                : tdma_min_ports(0 TO NOC_PORTS - 1);
+    SIGNAL recvs                : tdma_min_ports(0 TO NOC_PORTS - 1);
+    SIGNAL nios_send_data       : STD_LOGIC_VECTOR(31 DOWNTO 0);
+    SIGNAL nios_send_addr       : STD_LOGIC_VECTOR(7 DOWNTO 0);
 
     COMPONENT recop IS
         PORT
@@ -194,10 +215,10 @@ ARCHITECTURE rtl OF top_level IS
     COMPONENT reconfig_node IS
         PORT
         (
-            clock      : IN  STD_LOGIC;
-            reset      : IN  STD_LOGIC;
+            clock      : IN STD_LOGIC;
+            reset      : IN STD_LOGIC;
             send       : OUT tdma_min_port;
-            recv       : IN  tdma_min_port;
+            recv       : IN tdma_min_port;
             pm_wr_en   : OUT STD_LOGIC;
             pm_wr_addr : OUT STD_LOGIC_VECTOR(14 DOWNTO 0);
             pm_wr_data : OUT STD_LOGIC_VECTOR(15 DOWNTO 0)
@@ -265,6 +286,7 @@ ARCHITECTURE rtl OF top_level IS
             refclk   : IN STD_LOGIC;
             rst      : IN STD_LOGIC;
             outclk_0 : OUT STD_LOGIC;
+            outclk_1 : OUT STD_LOGIC;
             locked   : OUT STD_LOGIC
         );
     END COMPONENT;
@@ -304,6 +326,21 @@ ARCHITECTURE rtl OF top_level IS
         );
     END COMPONENT;
 
+    COMPONENT nios IS
+        PORT
+        (
+            clk_clk                                    : IN  STD_LOGIC;                     -- 50 MHz (clk_nios)
+            clk_1_clk                                  : IN  STD_LOGIC;                     -- 10 MHz (clk_noc)
+            reset_reset_n                              : IN  STD_LOGIC;                     -- 50 MHz domain reset
+            reset_0_reset_n                            : IN  STD_LOGIC;                     -- 10 MHz domain reset
+            noc_noc_coe_send_data                      : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
+            noc_noc_coe_send_addr                      : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+            noc_noc_coe_recv_data                      : IN  STD_LOGIC_VECTOR(31 DOWNTO 0);
+            noc_noc_coe_recv_addr                      : IN  STD_LOGIC_VECTOR(7 DOWNTO 0);
+            recop_reset_pio_external_connection_export : OUT STD_LOGIC
+        );
+    END COMPONENT nios;
+
 BEGIN
 
     -- ===== Clock generation =====
@@ -315,19 +352,22 @@ BEGIN
     (
         refclk   => CLOCK_50,
         rst      => key0_reset,
-        outclk_0 => sys_clk,
+        outclk_0 => sys_clk,  -- 10MHz
+        outclk_1 => nios_clk, -- 50MHz
         locked   => pll_locked
     );
 
     -- Hold design in reset until KEY(0) released AND PLL locked.
-    reset      <= key0_reset OR NOT pll_locked;
+    reset           <= key0_reset OR NOT pll_locked;
+    nios_reset_n    <= NOT reset;
+    recop_reset_sig <= reset OR nios_recop_reset_sig;
     -- Debug freeze/view removed for now: the board only ever runs the app
     -- (no FSM freeze, no display overlay). The debug scaffolding (pc_sig,
     -- state_sig, H_S, step_detect) is kept but disconnected, to be re-enabled
     -- later with a 2-FF synchroniser on the freeze switch -- feeding SW(9)
     -- straight into the clocked FSM caused metastable snapshots when toggled
     -- live.
-    debug_mode <= '0';
+    debug_mode      <= '0';
 
     -- KEY(3) rising-edge detector -> single-cycle debug_step pulse
     step_detect : PROCESS (sys_clk)
@@ -404,7 +444,7 @@ BEGIN
     MAP
     (
     clk            => sys_clk,
-    reset          => reset,
+    reset          => recop_reset_sig,
     z_flag         => z_flag_sig,
     debug_mode     => debug_mode,
     debug_step     => debug_step,
@@ -487,6 +527,27 @@ BEGIN
     recv  => recvs(4)
     );
 
+    -- ===== Nios II subsystem (NoC port 5, W7) =====
+    -- Two clock domains: clk_clk = nios_clk (50 MHz) for the CPU/JTAG/RAM;
+    -- clk_1_clk = sys_clk (10 MHz) for noc_bridge + recop_reset_pio behind the
+    -- Avalon clock-crossing bridge. Both resets take NOT reset -- each Qsys
+    -- clock_source re-synchronises it into its own domain.
+    U_NIOS : nios PORT
+    MAP (
+    clk_clk                                    => nios_clk,
+    clk_1_clk                                  => sys_clk,
+    reset_reset_n                              => nios_reset_n,
+    reset_0_reset_n                            => nios_reset_n,
+    noc_noc_coe_send_data                      => nios_send_data,
+    noc_noc_coe_send_addr                      => nios_send_addr,
+    noc_noc_coe_recv_data                      => recvs(5).data,
+    noc_noc_coe_recv_addr                      => recvs(5).addr,
+    recop_reset_pio_external_connection_export => nios_recop_reset_sig
+    );
+
+    sends(5).data <= nios_send_data;
+    sends(5).addr <= nios_send_addr;
+
     -- ===== Reconfig node (NoC port 6, W6) =====
     U_RECONFIG : reconfig_node PORT
     MAP (
@@ -499,9 +560,7 @@ BEGIN
     pm_wr_data => pm_wr_data_sig
     );
 
-    -- ===== Ports 5 and 7 idle (Nios II and spare, deferred) =====
-    sends(5).addr <= (OTHERS => '0');
-    sends(5).data <= (OTHERS => '0');
+    -- ===== Port 7 idle (spare) =====
     sends(7).addr <= (OTHERS => '0');
     sends(7).data <= (OTHERS => '0');
 
@@ -519,7 +578,7 @@ BEGIN
     -- Application view only: LEDR and HEX3:0 are driven by the ReCOP program
     -- via memory-mapped $FF2 (LED) and $FF3 (HEX). The SW(7) debug-view mux is
     -- removed for now (see debug_mode note above).
-    LEDR <= io_led_sig(9 DOWNTO 0);
+    LEDR        <= io_led_sig(9 DOWNTO 0);
 
     display_val <= hex_disp;
 
