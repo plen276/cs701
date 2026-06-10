@@ -1,0 +1,14 @@
+	component nios is
+		port (
+			clk_clk                                    : in  std_logic                     := 'X';             -- clk
+			clk_1_clk                                  : in  std_logic                     := 'X';             -- clk
+			noc_noc_coe_send_data                      : out std_logic_vector(31 downto 0);                    -- coe_send_data
+			noc_noc_coe_send_addr                      : out std_logic_vector(7 downto 0);                     -- coe_send_addr
+			noc_noc_coe_recv_data                      : in  std_logic_vector(31 downto 0) := (others => 'X'); -- coe_recv_data
+			noc_noc_coe_recv_addr                      : in  std_logic_vector(7 downto 0)  := (others => 'X'); -- coe_recv_addr
+			recop_reset_pio_external_connection_export : out std_logic;                                        -- export
+			reset_reset_n                              : in  std_logic                     := 'X';             -- reset_n
+			reset_0_reset_n                            : in  std_logic                     := 'X'              -- reset_n
+		);
+	end component nios;
+
