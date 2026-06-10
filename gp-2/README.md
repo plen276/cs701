@@ -236,6 +236,43 @@ bitstream — so each demo is its own Quartus build:
 
 ---
 
+## Heterogeneous MPSoC: Nios II reprograms ReCOP (W7)
+
+The second processor — a **Nios II** (the *non-critical support* core) — reprograms
+the ReCOP *critical part* at runtime, over the NoC. This is what makes the system a
+genuine **heterogeneous** MPSoC: a reactive ReCOP and a von-Neumann Nios II, plus the
+four ASPs, all on the one TDMA-MIN fabric.
+
+**Hardware** (Platform Designer system on NoC port 5 — see [w7-nios-plan.md](docs/w7-nios-plan.md)):
+
+- Nios II/e + JTAG-UART (console) + on-chip RAM
+- a **custom ISA instruction** `confprog_build` that assembles a Conf-Prog packet in one instruction (R8)
+- `noc_avalon_bridge` — an Avalon-MM ⇄ TDMA-MIN adapter (the Avalon-side analogue of `recop_ni`)
+- a PIO that lets Nios hold ReCOP in reset
+- **two clock domains** — Nios at 50 MHz (reliable JTAG), critical side at 10 MHz — joined only by an Avalon clock-crossing bridge (the sole CDC)
+
+**Software** ([software/nios/nios_reconfig.c](software/nios/nios_reconfig.c)): Nios
+holds ReCOP in reset, streams a small program into PM via the reconfig node (each
+`WRITE_WORD` packet built by the custom instruction), then releases ReCOP. The loaded
+program is a live **switch echo** (`LDR R1 $FF0 ; STR R1 $FF3 ; JMP`), so after the
+reload **HEX tracks SW[9:0]**.
+
+### Board steps
+
+1. Program the FPGA, then load `nios_reconfig.c` onto the Nios (JTAG download).
+2. On reset: HEX shows `0000` (ReCOP held); the JTAG console prints "reprogramming…".
+3. ReCOP boots the loaded program → **move the switches, HEX follows them live.**
+
+**HEX-follows-the-switches is the proof:** an *independent* processor wrote that code
+into ReCOP's memory at runtime (no resynthesis), using a custom instruction — the
+spec's "change of program object code of the critical part."
+
+> Running the Nios reconfig overwrites whatever ReCOP program is baked into `test.mif`
+> (Nios holds ReCOP and rewrites `PM[0]`). So for the W5 / W6 demos above, don't run
+> the Nios reconfig software — load a passive Nios program, or none.
+
+---
+
 ## Node / NoC map
 
 | NoC port | Node | id |
@@ -245,7 +282,7 @@ bitstream — so each demo is its own Quartus build:
 | 2 | AVG-ASP (moving average) | 2 |
 | 3 | COR-ASP (via cor_asp_noc) | 3 |
 | 4 | PD-ASP (PeakDetector) | 4 |
-| 5 | reserved (Nios II bridge, deferred) | 5 |
+| 5 | Nios II subsystem (W7 — bridge + custom instr) | 5 |
 | 6 | reconfig node (W6 PM reload) | 6 |
 | 7 | spare | 7 |
 
