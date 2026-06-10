@@ -3,12 +3,13 @@
  <debug showDebugMenu="0" />
  <systemtable filter="All Interfaces">
   <columns>
-   <connections preferredWidth="143" />
+   <connections preferredWidth="191" />
    <irq preferredWidth="34" />
   </columns>
  </systemtable>
- <library expandedCategories="Project,Library" />
- <window width="1100" height="800" x="365" y="206" />
+ <library
+   expandedCategories="Library/Basic Functions/Bridges and Adaptors,Library/Basic Functions,Library,Library/Basic Functions/Bridges and Adaptors/Memory Mapped,Project" />
+ <window width="1345" height="1399" x="365" y="0" />
  <generation
    synthesis="VHDL"
    path="D:/Documents/GitHub_University/cs701/gp-2/ip/_PROJECT_NAME_" />

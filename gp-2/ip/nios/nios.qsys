@@ -9,11 +9,19 @@
    categories="System" />
  <parameter name="bonusData"><![CDATA[bonusData 
 {
-   element clk
+   element clk_nios
    {
       datum _sortIndex
       {
          value = "0";
+         type = "int";
+      }
+   }
+   element clk_noc
+   {
+      datum _sortIndex
+      {
+         value = "7";
          type = "int";
       }
    }
@@ -45,7 +53,55 @@
    {
       datum baseAddress
       {
-         value = "266272";
+         value = "17039360";
+         type = "String";
+      }
+   }
+   element mm_clock_crossing_bridge_0
+   {
+      datum _sortIndex
+      {
+         value = "8";
+         type = "int";
+      }
+   }
+   element mm_clock_crossing_bridge_0.s0
+   {
+      datum baseAddress
+      {
+         value = "0";
+         type = "String";
+      }
+   }
+   element nios
+   {
+      datum _originalDeviceFamily
+      {
+         value = "Cyclone V";
+         type = "String";
+      }
+   }
+   element nios
+   {
+      datum _originalDeviceFamily
+      {
+         value = "Cyclone V";
+         type = "String";
+      }
+   }
+   element nios
+   {
+      datum _originalDeviceFamily
+      {
+         value = "Cyclone V";
+         type = "String";
+      }
+   }
+   element nios
+   {
+      datum _originalDeviceFamily
+      {
+         value = "Cyclone V";
          type = "String";
       }
    }
@@ -73,11 +129,11 @@
          type = "int";
       }
    }
-   element noc_bridge.avs_1
+   element noc_bridge.avalon_slave_0
    {
       datum baseAddress
       {
-         value = "266240";
+         value = "16";
          type = "String";
       }
    }
@@ -93,7 +149,7 @@
    {
       datum baseAddress
       {
-         value = "131072";
+         value = "16908288";
          type = "String";
       }
    }
@@ -109,7 +165,7 @@
    {
       datum baseAddress
       {
-         value = "266256";
+         value = "0";
          type = "String";
       }
    }
@@ -158,16 +214,24 @@
  <parameter name="timeStamp" value="0" />
  <parameter name="useTestBenchNamingPattern" value="false" />
  <instanceScript></instanceScript>
- <interface name="clk" internal="clk.clk_in" type="clock" dir="end" />
+ <interface name="clk" internal="clk_nios.clk_in" type="clock" dir="end" />
+ <interface name="clk_1" internal="clk_noc.clk_in" type="clock" dir="end" />
  <interface name="noc_noc" internal="noc_bridge.noc" type="conduit" dir="end" />
  <interface
    name="recop_reset_pio_external_connection"
    internal="recop_reset_pio.external_connection"
    type="conduit"
    dir="end" />
- <interface name="reset" internal="clk.clk_in_reset" type="reset" dir="end" />
- <module name="clk" kind="clock_source" version="18.1" enabled="1">
+ <interface name="reset" internal="clk_nios.clk_in_reset" type="reset" dir="end" />
+ <interface name="reset_0" internal="clk_noc.clk_in_reset" type="reset" dir="end" />
+ <module name="clk_nios" kind="clock_source" version="18.1" enabled="1">
   <parameter name="clockFrequency" value="50000000" />
+  <parameter name="clockFrequencyKnown" value="true" />
+  <parameter name="inputClockFrequency" value="0" />
+  <parameter name="resetSynchronousEdges" value="NONE" />
+ </module>
+ <module name="clk_noc" kind="clock_source" version="18.1" enabled="1">
+  <parameter name="clockFrequency" value="10000000" />
   <parameter name="clockFrequencyKnown" value="true" />
   <parameter name="inputClockFrequency" value="0" />
   <parameter name="resetSynchronousEdges" value="NONE" />
@@ -185,14 +249,14 @@
   <parameter name="cpuArchRev" value="1" />
   <parameter name="cpuID" value="0" />
   <parameter name="cpuReset" value="false" />
-  <parameter name="customInstSlavesSystemInfo"><![CDATA[<info><slave name="confprog_build" baseAddress="0" addressSpan="1" clockCycleType="COMBINATORIAL" /></info>]]></parameter>
+  <parameter name="customInstSlavesSystemInfo"><![CDATA[<info><slave name="u_confprog_build" baseAddress="0" addressSpan="1" clockCycleType="COMBINATORIAL" /></info>]]></parameter>
   <parameter name="customInstSlavesSystemInfo_nios_a" value="&lt;info/&gt;" />
   <parameter name="customInstSlavesSystemInfo_nios_b" value="&lt;info/&gt;" />
   <parameter name="customInstSlavesSystemInfo_nios_c" value="&lt;info/&gt;" />
-  <parameter name="dataAddrWidth" value="19" />
+  <parameter name="dataAddrWidth" value="25" />
   <parameter name="dataMasterHighPerformanceAddrWidth" value="1" />
   <parameter name="dataMasterHighPerformanceMapParam" value="" />
-  <parameter name="dataSlaveMapParam"><![CDATA[<address-map><slave name='onchip_memory.s1' start='0x20000' end='0x40000' type='altera_avalon_onchip_memory2.s1' /><slave name='cpu.debug_mem_slave' start='0x40800' end='0x41000' type='altera_nios2_gen2.debug_mem_slave' /><slave name='noc_bridge.avs_1' start='0x41000' end='0x41010' type='noc_avalon_bridge.avs_1' /><slave name='recop_reset_pio.s1' start='0x41010' end='0x41020' type='altera_avalon_pio.s1' /><slave name='jtag_uart.avalon_jtag_slave' start='0x41020' end='0x41028' type='altera_avalon_jtag_uart.avalon_jtag_slave' /></address-map>]]></parameter>
+  <parameter name="dataSlaveMapParam"><![CDATA[<address-map><slave name='recop_reset_pio.s1' start='0x0' end='0x10' type='altera_avalon_pio.s1' /><slave name='noc_bridge.avalon_slave_0' start='0x10' end='0x20' type='noc_avalon_bridge.avalon_slave_0' /><slave name='cpu.debug_mem_slave' start='0x40800' end='0x41000' type='altera_nios2_gen2.debug_mem_slave' /><slave name='onchip_memory.s1' start='0x1020000' end='0x1040000' type='altera_avalon_onchip_memory2.s1' /><slave name='jtag_uart.avalon_jtag_slave' start='0x1040000' end='0x1040008' type='altera_avalon_jtag_uart.avalon_jtag_slave' /></address-map>]]></parameter>
   <parameter name="data_master_high_performance_paddr_base" value="0" />
   <parameter name="data_master_high_performance_paddr_size" value="0" />
   <parameter name="data_master_paddr_base" value="0" />
@@ -230,8 +294,8 @@
   <parameter name="icache_size" value="0" />
   <parameter name="icache_tagramBlockType" value="Automatic" />
   <parameter name="impl" value="Fast" />
-  <parameter name="instAddrWidth" value="19" />
-  <parameter name="instSlaveMapParam"><![CDATA[<address-map><slave name='onchip_memory.s1' start='0x20000' end='0x40000' type='altera_avalon_onchip_memory2.s1' /><slave name='cpu.debug_mem_slave' start='0x40800' end='0x41000' type='altera_nios2_gen2.debug_mem_slave' /></address-map>]]></parameter>
+  <parameter name="instAddrWidth" value="25" />
+  <parameter name="instSlaveMapParam"><![CDATA[<address-map><slave name='cpu.debug_mem_slave' start='0x40800' end='0x41000' type='altera_nios2_gen2.debug_mem_slave' /><slave name='onchip_memory.s1' start='0x1020000' end='0x1040000' type='altera_avalon_onchip_memory2.s1' /></address-map>]]></parameter>
   <parameter name="instructionMasterHighPerformanceAddrWidth" value="1" />
   <parameter name="instructionMasterHighPerformanceMapParam" value="" />
   <parameter name="instruction_master_high_performance_paddr_base" value="0" />
@@ -369,6 +433,23 @@
   <parameter name="writeBufferDepth" value="64" />
   <parameter name="writeIRQThreshold" value="8" />
  </module>
+ <module
+   name="mm_clock_crossing_bridge_0"
+   kind="altera_avalon_mm_clock_crossing_bridge"
+   version="18.1"
+   enabled="1">
+  <parameter name="ADDRESS_UNITS" value="SYMBOLS" />
+  <parameter name="ADDRESS_WIDTH" value="10" />
+  <parameter name="COMMAND_FIFO_DEPTH" value="4" />
+  <parameter name="DATA_WIDTH" value="32" />
+  <parameter name="MASTER_SYNC_DEPTH" value="2" />
+  <parameter name="MAX_BURST_SIZE" value="1" />
+  <parameter name="RESPONSE_FIFO_DEPTH" value="4" />
+  <parameter name="SLAVE_SYNC_DEPTH" value="2" />
+  <parameter name="SYMBOL_WIDTH" value="8" />
+  <parameter name="SYSINFO_ADDR_WIDTH" value="5" />
+  <parameter name="USE_AUTO_ADDRESS_WIDTH" value="0" />
+ </module>
  <module name="noc_bridge" kind="noc_avalon_bridge" version="1.0" enabled="1" />
  <module
    name="onchip_memory"
@@ -410,7 +491,7 @@
   <parameter name="bitClearingEdgeCapReg" value="false" />
   <parameter name="bitModifyingOutReg" value="false" />
   <parameter name="captureEdge" value="false" />
-  <parameter name="clockRate" value="50000000" />
+  <parameter name="clockRate" value="10000000" />
   <parameter name="direction" value="Output" />
   <parameter name="edgeType" value="RISING" />
   <parameter name="generateIRQ" value="false" />
@@ -431,16 +512,7 @@
    start="cpu.data_master"
    end="jtag_uart.avalon_jtag_slave">
   <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00041020" />
-  <parameter name="defaultConnection" value="false" />
- </connection>
- <connection
-   kind="avalon"
-   version="18.1"
-   start="cpu.data_master"
-   end="noc_bridge.avs_1">
-  <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00041000" />
+  <parameter name="baseAddress" value="0x01040000" />
   <parameter name="defaultConnection" value="false" />
  </connection>
  <connection
@@ -456,43 +528,83 @@
    kind="avalon"
    version="18.1"
    start="cpu.data_master"
+   end="mm_clock_crossing_bridge_0.s0">
+  <parameter name="arbitrationPriority" value="1" />
+  <parameter name="baseAddress" value="0x0000" />
+  <parameter name="defaultConnection" value="false" />
+ </connection>
+ <connection
+   kind="avalon"
+   version="18.1"
+   start="cpu.data_master"
+   end="onchip_memory.s1">
+  <parameter name="arbitrationPriority" value="1" />
+  <parameter name="baseAddress" value="0x01020000" />
+  <parameter name="defaultConnection" value="false" />
+ </connection>
+ <connection
+   kind="avalon"
+   version="18.1"
+   start="cpu.instruction_master"
+   end="cpu.debug_mem_slave">
+  <parameter name="arbitrationPriority" value="1" />
+  <parameter name="baseAddress" value="0x00040800" />
+  <parameter name="defaultConnection" value="false" />
+ </connection>
+ <connection
+   kind="avalon"
+   version="18.1"
+   start="cpu.instruction_master"
+   end="onchip_memory.s1">
+  <parameter name="arbitrationPriority" value="1" />
+  <parameter name="baseAddress" value="0x01020000" />
+  <parameter name="defaultConnection" value="false" />
+ </connection>
+ <connection
+   kind="avalon"
+   version="18.1"
+   start="mm_clock_crossing_bridge_0.m0"
+   end="noc_bridge.avalon_slave_0">
+  <parameter name="arbitrationPriority" value="1" />
+  <parameter name="baseAddress" value="0x0010" />
+  <parameter name="defaultConnection" value="false" />
+ </connection>
+ <connection
+   kind="avalon"
+   version="18.1"
+   start="mm_clock_crossing_bridge_0.m0"
    end="recop_reset_pio.s1">
   <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00041010" />
+  <parameter name="baseAddress" value="0x0000" />
   <parameter name="defaultConnection" value="false" />
  </connection>
+ <connection kind="clock" version="18.1" start="clk_nios.clk" end="cpu.clk" />
+ <connection kind="clock" version="18.1" start="clk_nios.clk" end="jtag_uart.clk" />
  <connection
-   kind="avalon"
+   kind="clock"
    version="18.1"
-   start="cpu.data_master"
-   end="onchip_memory.s1">
-  <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00020000" />
-  <parameter name="defaultConnection" value="false" />
- </connection>
+   start="clk_noc.clk"
+   end="recop_reset_pio.clk" />
  <connection
-   kind="avalon"
+   kind="clock"
    version="18.1"
-   start="cpu.instruction_master"
-   end="cpu.debug_mem_slave">
-  <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00040800" />
-  <parameter name="defaultConnection" value="false" />
- </connection>
+   start="clk_nios.clk"
+   end="onchip_memory.clk1" />
  <connection
-   kind="avalon"
+   kind="clock"
    version="18.1"
-   start="cpu.instruction_master"
-   end="onchip_memory.s1">
-  <parameter name="arbitrationPriority" value="1" />
-  <parameter name="baseAddress" value="0x00020000" />
-  <parameter name="defaultConnection" value="false" />
- </connection>
- <connection kind="clock" version="18.1" start="clk.clk" end="cpu.clk" />
- <connection kind="clock" version="18.1" start="clk.clk" end="jtag_uart.clk" />
- <connection kind="clock" version="18.1" start="clk.clk" end="recop_reset_pio.clk" />
- <connection kind="clock" version="18.1" start="clk.clk" end="onchip_memory.clk1" />
- <connection kind="clock" version="18.1" start="clk.clk" end="noc_bridge.clock" />
+   start="clk_noc.clk"
+   end="noc_bridge.clock" />
+ <connection
+   kind="clock"
+   version="18.1"
+   start="clk_noc.clk"
+   end="mm_clock_crossing_bridge_0.m0_clk" />
+ <connection
+   kind="clock"
+   version="18.1"
+   start="clk_nios.clk"
+   end="mm_clock_crossing_bridge_0.s0_clk" />
  <connection kind="interrupt" version="18.1" start="cpu.irq" end="jtag_uart.irq">
   <parameter name="irqNumber" value="0" />
  </connection>
@@ -501,31 +613,45 @@
    version="18.1"
    start="cpu.custom_instruction_master"
    end="u_confprog_build.nios_custom_instruction_slave_1">
-  <parameter name="CIName" value="confprog_build" />
+  <parameter name="CIName" value="u_confprog_build" />
   <parameter name="arbitrationPriority" value="1" />
   <parameter name="baseAddress" value="0" />
  </connection>
- <connection kind="reset" version="18.1" start="clk.clk_reset" end="cpu.reset" />
  <connection
    kind="reset"
    version="18.1"
-   start="clk.clk_reset"
+   start="clk_noc.clk_reset"
+   end="mm_clock_crossing_bridge_0.m0_reset" />
+ <connection
+   kind="reset"
+   version="18.1"
+   start="clk_nios.clk_reset"
+   end="cpu.reset" />
+ <connection
+   kind="reset"
+   version="18.1"
+   start="clk_nios.clk_reset"
    end="jtag_uart.reset" />
  <connection
    kind="reset"
    version="18.1"
-   start="clk.clk_reset"
-   end="recop_reset_pio.reset" />
- <connection
-   kind="reset"
-   version="18.1"
-   start="clk.clk_reset"
+   start="clk_noc.clk_reset"
    end="noc_bridge.reset" />
  <connection
    kind="reset"
    version="18.1"
-   start="clk.clk_reset"
+   start="clk_noc.clk_reset"
+   end="recop_reset_pio.reset" />
+ <connection
+   kind="reset"
+   version="18.1"
+   start="clk_nios.clk_reset"
    end="onchip_memory.reset1" />
+ <connection
+   kind="reset"
+   version="18.1"
+   start="clk_nios.clk_reset"
+   end="mm_clock_crossing_bridge_0.s0_reset" />
  <interconnectRequirement for="$system" name="qsys_mm.clockCrossingAdapter" value="HANDSHAKE" />
  <interconnectRequirement for="$system" name="qsys_mm.enableEccProtection" value="FALSE" />
  <interconnectRequirement for="$system" name="qsys_mm.insertDefaultSlave" value="FALSE" />
